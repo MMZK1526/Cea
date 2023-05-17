@@ -1,3 +1,4 @@
+{-# LANGUAGE UndecidableInstances #-}
 module Cea.Pointer where
 
 import           Control.Monad.IO.Class
@@ -5,6 +6,7 @@ import           Control.Monad.Trans.State
 import           Data.Char
 import           Data.Coerce
 import           Data.Int
+import           Data.Proxy
 import           Data.Word
 import           Foreign.Ptr
 import           Foreign.Marshal.Alloc
@@ -12,30 +14,26 @@ import qualified Foreign.Marshal.Utils as F
 import           Foreign.Storable (Storable)
 import qualified Foreign.Storable as F
 import           GHC.Generics
+import           GHC.TypeLits
 
 class Pointable a where
-  size :: a -> Int
-  default size :: (Generic a, GPointable (Rep a)) => a -> Int
-  size = gSize . from
+  type SizeOf a :: Nat
 
-  make :: a -> IO (Ptr a)
+  sizeOf :: KnownNat (SizeOf a) => a -> Int
+  sizeOf _ = fromIntegral $ natVal (Proxy :: Proxy (SizeOf a))
+
+  make :: KnownNat (SizeOf a) => a -> IO (Ptr a)
   make a = do
-    ptr <- mallocBytes $ size a
+    ptr <- mallocBytes (sizeOf a)
     store ptr a
     pure ptr
 
-  load :: Ptr a -> IO a
-  default load :: (Generic a, GPointable (Rep a)) => Ptr a -> IO a
-  load = fmap to . gLoad . castPtr
+  load :: KnownNat (SizeOf a) => Ptr a -> IO a
 
-  store :: Ptr a -> a -> IO ()
-  default store :: (Generic a, GPointable (Rep a)) => Ptr a -> a -> IO ()
-  store ptr = gStore (castPtr ptr) . from
+  store :: KnownNat (SizeOf a) => Ptr a -> a -> IO ()
 
 instance Pointable Int8 where
-  size :: Int8 -> Int
-  size = const 1
-  {-# INLINE size #-}
+  type SizeOf Int8 = 1
 
   make :: Int8 -> IO (Ptr Int8)
   make = F.new
@@ -50,9 +48,7 @@ instance Pointable Int8 where
   {-# INLINE store #-}
 
 instance Pointable Int16 where
-  size :: Int16 -> Int
-  size = const 2
-  {-# INLINE size #-}
+  type SizeOf Int16 = 2
 
   make :: Int16 -> IO (Ptr Int16)
   make = F.new
@@ -67,9 +63,7 @@ instance Pointable Int16 where
   {-# INLINE store #-}
 
 instance Pointable Int32 where
-  size :: Int32 -> Int
-  size = const 4
-  {-# INLINE size #-}
+  type SizeOf Int32 = 4
 
   make :: Int32 -> IO (Ptr Int32)
   make = F.new
@@ -84,9 +78,7 @@ instance Pointable Int32 where
   {-# INLINE store #-}
 
 instance Pointable Int64 where
-  size :: Int64 -> Int
-  size = const 8
-  {-# INLINE size #-}
+  type SizeOf Int64 = 8
 
   make :: Int64 -> IO (Ptr Int64)
   make = F.new
@@ -101,9 +93,7 @@ instance Pointable Int64 where
   {-# INLINE store #-}
 
 instance Pointable Word8 where
-  size :: Word8 -> Int
-  size = const 1
-  {-# INLINE size #-}
+  type SizeOf Word8 = 1
 
   make :: Word8 -> IO (Ptr Word8)
   make = F.new
@@ -118,9 +108,7 @@ instance Pointable Word8 where
   {-# INLINE store #-}
 
 instance Pointable Word16 where
-  size :: Word16 -> Int
-  size = const 2
-  {-# INLINE size #-}
+  type SizeOf Word16 = 2
 
   make :: Word16 -> IO (Ptr Word16)
   make = F.new
@@ -135,9 +123,7 @@ instance Pointable Word16 where
   {-# INLINE store #-}
 
 instance Pointable Word32 where
-  size :: Word32 -> Int
-  size = const 4
-  {-# INLINE size #-}
+  type SizeOf Word32 = 4
 
   make :: Word32 -> IO (Ptr Word32)
   make = F.new
@@ -152,9 +138,7 @@ instance Pointable Word32 where
   {-# INLINE store #-}
 
 instance Pointable Word64 where
-  size :: Word64 -> Int
-  size = const 8
-  {-# INLINE size #-}
+  type SizeOf Word64 = 8
 
   make :: Word64 -> IO (Ptr Word64)
   make = F.new
@@ -171,9 +155,7 @@ instance Pointable Word64 where
 -- We want to know the size of "Int" at compile time, so we will always assume
 -- it takes eight bytes.
 instance Pointable Int where
-  size :: Int -> Int
-  size = const 8
-  {-# INLINE size #-}
+  type SizeOf Int = 8
 
   make :: Int -> IO (Ptr Int)
   make = fmap castPtr . F.new @Word64 . fromIntegral
@@ -187,12 +169,27 @@ instance Pointable Int where
   store ptr = F.poke (castPtr ptr) . fromIntegral @_ @Word64
   {-# INLINE store #-}
 
+-- We want to know the size of "Word" at compile time, so we will always assume
+-- it takes eight bytes.
+instance Pointable Word where
+  type SizeOf Word = 8
+
+  make :: Word -> IO (Ptr Word)
+  make = fmap castPtr . F.new @Word64 . fromIntegral
+  {-# INLINE make #-}
+
+  load :: Ptr Word -> IO Word
+  load = fmap fromIntegral . F.peek @Word64 . castPtr
+  {-# INLINE load #-}
+
+  store :: Ptr Word -> Word -> IO ()
+  store ptr = F.poke (castPtr ptr) . fromIntegral @_ @Word64
+  {-# INLINE store #-}
+
 -- We want to know the size of "Char" at compile time, so we will always assume
 -- it takes four bytes.
 instance Pointable Char where
-  size :: Char -> Int
-  size = const 4
-  {-# INLINE size #-}
+  type SizeOf Char = 4
 
   make :: Char -> IO (Ptr Char)
   make = fmap castPtr . F.new @Word32 . fromIntegral . ord
@@ -207,9 +204,7 @@ instance Pointable Char where
   {-# INLINE store #-}
 
 instance Pointable () where
-  size :: () -> Int
-  size = const 0
-  {-# INLINE size #-}
+  type SizeOf () = 0
 
   make :: () -> IO (Ptr ())
   make = const . pure $ nullPtr
@@ -224,9 +219,7 @@ instance Pointable () where
   {-# INLINE store #-}
 
 instance Pointable Float where
-  size :: Float -> Int
-  size = const 4
-  {-# INLINE size #-}
+  type SizeOf Float = 4
 
   make :: Float -> IO (Ptr Float)
   make = F.new
@@ -241,9 +234,7 @@ instance Pointable Float where
   {-# INLINE store #-}
 
 instance Pointable Double where
-  size :: Double -> Int
-  size = const 8
-  {-# INLINE size #-}
+  type SizeOf Double = 8
 
   make :: Double -> IO (Ptr Double)
   make = F.new
@@ -258,19 +249,46 @@ instance Pointable Double where
   {-# INLINE store #-}
 
 --------------------------------------------------------------------------------
+-- Generic Derivation Wrapper
+--------------------------------------------------------------------------------
+
+newtype WithPointable a = WithPointable { unWithPointable :: a }
+
+instance (Generic a, GPointable (Rep a)) => Pointable (WithPointable a) where
+  type SizeOf (WithPointable a) = GSizeOf (Rep a)
+
+  load :: KnownNat (SizeOf (WithPointable a)) => Ptr (WithPointable a) -> IO (WithPointable a)
+  load ptr = do
+    let ptr' = castPtr ptr :: Ptr (Rep a p)
+    d <- gLoad ptr'
+    pure $ WithPointable $ to d
+  {-# INLINE load #-}
+
+  store :: KnownNat (SizeOf (WithPointable a)) => Ptr (WithPointable a) -> WithPointable a -> IO ()
+  store ptr a = do
+    let ptr' = castPtr ptr :: Ptr (Rep a p)
+    gStore ptr' $ from $ unWithPointable a
+  {-# INLINE store #-}
+
+
+--------------------------------------------------------------------------------
 -- Generic Pointable
 --------------------------------------------------------------------------------
 
 
 class GPointable a where
-  gSize :: a p -> Int
-  gLoad :: Ptr (a p) -> IO (a p)
-  gStore :: Ptr (a p) -> a p -> IO ()
+  type GSizeOf a :: Nat
+
+  gSizeOf :: KnownNat (GSizeOf a) => a p -> Int
+  gSizeOf = const . fromIntegral $ natVal (Proxy @(GSizeOf a))
+  {-# INLINE gSizeOf #-}
+
+  gLoad :: KnownNat (GSizeOf a) => Ptr (a p) -> IO (a p)
+
+  gStore :: KnownNat (GSizeOf a) => Ptr (a p) -> a p -> IO ()
 
 instance GPointable U1 where
-  gSize :: U1 p -> Int
-  gSize = const 0
-  {-# INLINE gSize #-}
+  type GSizeOf U1 = 0
 
   gLoad :: Ptr (U1 p) -> IO (U1 p)
   gLoad = const $ pure U1
@@ -281,45 +299,39 @@ instance GPointable U1 where
   {-# INLINE gStore #-}
 
 instance GPointable a => GPointable (M1 i c a) where
-  gSize :: M1 i c a p -> Int
-  gSize = gSize . unM1
-  {-# INLINE gSize #-}
+  type GSizeOf (M1 i c a) = GSizeOf a
 
-  gLoad :: Ptr (M1 i c a p) -> IO (M1 i c a p)
+  gLoad :: KnownNat (GSizeOf (M1 i c a)) => Ptr (M1 i c a p) -> IO (M1 i c a p)
   gLoad = fmap M1 . gLoad . castPtr
   {-# INLINE gLoad #-}
 
-  gStore :: Ptr (M1 i c a p) -> M1 i c a p -> IO ()
+  gStore :: KnownNat (GSizeOf (M1 i c a)) => Ptr (M1 i c a p) -> M1 i c a p -> IO ()
   gStore ptr = gStore (castPtr ptr) . unM1
   {-# INLINE gStore #-}
 
 instance Pointable a => GPointable (K1 i a) where
-  gSize :: K1 i a p -> Int
-  gSize = size . unK1
-  {-# INLINE gSize #-}
+  type GSizeOf (K1 i a) = SizeOf a -- TODO: Use ptr
 
-  gLoad :: Ptr (K1 i a p) -> IO (K1 i a p)
+  gLoad :: KnownNat (GSizeOf (K1 i a)) => Ptr (K1 i a p) -> IO (K1 i a p)
   gLoad = fmap K1 . load . castPtr
   {-# INLINE gLoad #-}
 
-  gStore :: Ptr (K1 i a p) -> K1 i a p -> IO ()
+  gStore :: KnownNat (GSizeOf (K1 i a)) => Ptr (K1 i a p) -> K1 i a p -> IO ()
   gStore ptr = store (castPtr ptr) . unK1
   {-# INLINE gStore #-}
 
-instance (GPointable a, GPointable b) => GPointable (a :*: b) where
-  gSize :: (a :*: b) p -> Int
-  gSize (a :*: b) = gSize a + gSize b
-  {-# INLINE gSize #-}
+instance (GPointable a, GPointable b, KnownNat (GSizeOf a), KnownNat (GSizeOf b)) => GPointable (a :*: b) where
+  type GSizeOf (a :*: b) = GSizeOf a + GSizeOf b
 
-  gLoad :: Ptr ((a :*: b) p) -> IO ((a :*: b) p)
+  gLoad :: KnownNat (GSizeOf (a :*: b)) => Ptr ((a :*: b) p) -> IO ((a :*: b) p)
   gLoad ptr = do
     a <- gLoad $ castPtr ptr
-    b <- gLoad $ castPtr ptr `plusPtr` gSize a
+    b <- gLoad $ castPtr ptr `plusPtr` gSizeOf a
     pure $ a :*: b
   {-# INLINE gLoad #-}
 
   gStore :: Ptr ((a :*: b) p) -> (a :*: b) p -> IO ()
   gStore ptr (a :*: b) = do
     gStore (castPtr ptr) a
-    gStore (castPtr ptr `plusPtr` gSize a) b
+    gStore (castPtr ptr `plusPtr` gSizeOf a) b
   {-# INLINE gStore #-}
