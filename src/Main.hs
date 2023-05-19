@@ -7,28 +7,19 @@ import           Foreign.Ptr
 import           Foreign.Storable
 import           GHC.Generics
 
-data Foo = Foo Int8 Int8 Int8 Int8
+data Int8Tuple = Int8Tuple Int8 Int8
   deriving stock (Eq, Ord, Show, Generic)
-  deriving Cea.Pointable via Cea.WithPointable Foo
+  deriving Cea.Pointable via Cea.WithPointable Int8Tuple
 
-data IntWrapper = IW Int32
+data TupleOfInt8Tuples = TupleOfInt8Tuples Int8Tuple Int8Tuple
   deriving stock (Eq, Ord, Show, Generic)
-  deriving Cea.Pointable via Cea.WithPointable IntWrapper
-
-data Baz = Baz IntWrapper
-  deriving stock (Eq, Ord, Show, Generic)
-  deriving Cea.Pointable via Cea.WithPointable Baz
-
-data Bar = Bar Foo
-  deriving stock (Eq, Ord, Show, Generic)
-  deriving Cea.Pointable via Cea.WithPointable Bar
+  deriving Cea.Pointable via Cea.WithPointable TupleOfInt8Tuples
 
 main :: IO ()
 main = do
-  let foo1 = Foo 11 45 14 19
-  let foo2 = Foo 11 45 14 19
-  ptr <- Cea.make (Bar foo1)
-  let ptr' = castPtr ptr :: Ptr Baz
-  val <- Cea.load ptr'
+  let int8Tuple1 = Int8Tuple 1 2
+      int8Tuple2 = Int8Tuple 3 4
+      tupleOfInt8Tuples = TupleOfInt8Tuples int8Tuple1 int8Tuple2
+  ptr <- Cea.make tupleOfInt8Tuples
+  val <- Cea.load ptr
   print val
-  print $ Cea.sizeOf $ Bar foo1
