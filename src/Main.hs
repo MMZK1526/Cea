@@ -19,6 +19,28 @@ data PtrTuple = PtrTuple (Ptr ()) (Ptr ())
   deriving stock (Eq, Ord, Show, Generic)
   deriving Cea.Pointable via Cea.WithPointable PtrTuple
 
+demoPrimitive :: IO ()
+demoPrimitive = do
+  putStrLn "Demo Primitive:\n"
+  let int32 = 14514 :: Int32
+  putStrLn $ "-- Storing " ++ show int32
+  ptr <- Cea.make int32
+  putStrLn $ "The address is " ++ show ptr ++ ", which may change at each run"
+  putStrLn $ "-- Loading the content of " ++ show ptr
+  val <- Cea.load ptr -- val == int32
+  print val
+  -- If we cast the pointer to "Ptr Int8", we would see the truncated value.
+  let ptr' = castPtr ptr :: Ptr Int8
+  putStrLn $ "-- Loading the content of " ++ show ptr' ++ " as 'Ptr Int8'"
+  val' <- Cea.load ptr'
+  print val'
+  -- If we cast the pointer to "Ptr Char", we would see the corresponding
+  -- character.
+  let ptr'' = castPtr ptr :: Ptr Char
+  putStrLn $ "-- Loading the content of " ++ show ptr'' ++ " as 'Ptr Char'"
+  val'' <- Cea.load ptr''
+  putStrLn [val'']
+
 demoNestedTuples :: IO ()
 demoNestedTuples = do
   putStrLn "Demo Nested Tuples:\n"
@@ -45,4 +67,6 @@ demoNestedTuples = do
   print val'
 
 main :: IO ()
-main = demoNestedTuples
+main = do
+  demoPrimitive >> putStrLn ""
+  demoNestedTuples >> putStrLn ""
