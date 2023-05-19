@@ -200,6 +200,45 @@ instance Pointable Word where
   store ptr = poke (castPtr ptr) . fromIntegral @_ @Word64
   {-# INLINE store #-}
 
+-- We want to know the size of "IntPtr" at compile time, so we will always
+-- assume it takes eight bytes.
+instance Pointable IntPtr where
+  type SizeOf IntPtr = 8
+
+  type IsPrim IntPtr = 'True
+
+  make :: IntPtr -> IO (Ptr IntPtr)
+  make = fmap castPtr . new @Int64 . fromIntegral
+  {-# INLINE make #-}
+
+  load :: Ptr IntPtr -> IO IntPtr
+  load = fmap fromIntegral . peek @Int64 . castPtr
+  {-# INLINE load #-}
+
+  store :: Ptr IntPtr -> IntPtr -> IO ()
+  store ptr = poke (castPtr ptr) . fromIntegral @_ @Word64
+  {-# INLINE store #-}
+
+-- We want to know the size of "Ptr" at compile time, so we will always assume
+-- it takes eight bytes.
+
+instance Pointable (Ptr a) where
+  type SizeOf (Ptr a) = 8
+
+  type IsPrim (Ptr a) = 'True
+
+  make :: Ptr a -> IO (Ptr (Ptr a))
+  make = fmap castPtr . new . ptrToIntPtr
+  {-# INLINE make #-}
+
+  load :: Ptr (Ptr a) -> IO (Ptr a)
+  load = fmap intPtrToPtr . peek . castPtr
+  {-# INLINE load #-}
+
+  store :: Ptr (Ptr a) -> Ptr a -> IO ()
+  store ptr = poke (castPtr ptr) . ptrToIntPtr
+  {-# INLINE store #-}
+
 -- We want to know the size of "Char" at compile time, so we will always assume
 -- it takes four bytes.
 instance Pointable Char where
