@@ -1,11 +1,12 @@
-
 import qualified Cea.Pointer as Cea
-import qualified Cea.Pointer.Unsafe as Unsafe
+import qualified Cea.Pointer.Accessor as Cea
 import           Control.Monad
 import           Data.Int
 import           Foreign.Ptr
 import           Foreign.Storable
 import           GHC.Generics
+import Data.Data (Proxy(..))
+import Criterion.Main
 
 data Int8Tuple = Int8Tuple Int8 Int8
   deriving stock (Eq, Ord, Show, Generic)
@@ -66,7 +67,40 @@ demoNestedTuples = do
   val' <- Cea.load ptr'
   print val'
 
+data IntTuple = IntTuple Int Int
+  deriving stock (Eq, Ord, Show, Generic)
+  deriving Cea.Pointable via Cea.WithPointable IntTuple
+
+fib :: Int -> Int
+fib 0 = 0
+fib 1 = 1
+fib x = fib' 0 1 2
+  where
+    fib' :: Int -> Int -> Int -> Int
+    fib' a b i
+      | i == x = a + b
+      | otherwise = b `seq` fib' b (a + b) (i + 1)
+
+fibCea :: Int -> IO Int
+fibCea 0 = pure 0
+fibCea 1 = pure 1
+fibCea n = do
+  ptr <- Cea.make $ IntTuple 0 1
+  let ptrA = Cea.access (Proxy @0) ptr :: Ptr Int
+      ptrB = Cea.access (Proxy @1) ptr :: Ptr Int
+  replicateM_ (n - 2) $ do
+    a <- Cea.load ptrA
+    b <- Cea.load ptrB
+    Cea.store ptrA b
+    Cea.store ptrB (a + b)
+  IntTuple a b <- Cea.load ptr
+  pure $ a + b
+
 main :: IO ()
 main = do
-  demoPrimitive >> putStrLn ""
-  demoNestedTuples >> putStrLn ""
+  let n = 10000
+  defaultMain
+    [ bench "fib" $ whnf fib n
+    , bench "fibCea" $ whnfAppIO fibCea n ]
+  -- demoPrimitive >> putStrLn ""
+  -- demoNestedTuples >> putStrLn ""
