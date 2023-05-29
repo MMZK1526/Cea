@@ -54,18 +54,28 @@ demoNestedTuples = do
   -- non-primitive type, they will be stored as pointers with size of 8 bytes.
   -- Within each "Int8Tuple", the fields are primitive types, so they will be
   -- stored as values, each taking 2 bytes (1 for each "Int8").
-  ptr <- Cea.make tupleOfInt8Tuples
+  ptr  <- Cea.make tupleOfInt8Tuples
   putStrLn $ "The address is " ++ show ptr ++ ", which may change at each run"
   putStrLn $ "-- Loading the content of " ++ show ptr
-  val <- Cea.load ptr -- val == tupleOfInt8Tuples
+  val  <- Cea.load ptr -- val == tupleOfInt8Tuples
   print val
-  -- | If we cast the pointer to "PtrTuple", since the fields are pointers,
+  -- If we cast the pointer to "PtrTuple", since the fields are pointers,
   -- we would see the address of the "Int8Tuple"s rather some representation of
   --  their values.
   let ptr' = castPtr ptr :: Ptr PtrTuple
   putStrLn $ "-- Loading the content of " ++ show ptr' ++ " as 'PtrTuple'"
   val' <- Cea.load ptr'
   print val'
+  -- Use accessor to modify each field of the nested tuple.
+  putStrLn $ "-- Modifying the content of " ++ show ptr
+  ptrA <- Cea.access (Proxy @0) ptr
+  ptrB <- Cea.access (Proxy @1) ptr
+  ptr3 <- Cea.access (Proxy @0) ptrB
+  Cea.store ptrA $ Int8Tuple 11 45
+  Cea.store ptr3 14
+  putStrLn $ "-- Loading the content of " ++ show ptr
+  val2 <- Cea.load ptr
+  print val2
 
 data IntTuple = IntTuple Int Int
   deriving stock (Eq, Ord, Show, Generic)
@@ -98,9 +108,9 @@ fibCea n = do
 
 main :: IO ()
 main = do
-  let n = 10000
-  defaultMain
-    [ bench "fib" $ whnf fib n
-    , bench "fibCea" $ whnfAppIO fibCea n ]
+  -- let n = 10000
+  -- defaultMain
+    -- [ bench "fib" $ whnf fib n
+    -- , bench "fibCea" $ whnfAppIO fibCea n ]
   -- demoPrimitive >> putStrLn ""
-  -- demoNestedTuples >> putStrLn ""
+  demoNestedTuples >> putStrLn ""

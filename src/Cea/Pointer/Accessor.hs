@@ -23,11 +23,11 @@ class GAccessible (ix :: Nat) a where
   gAccess :: Proxy ix -> Ptr (a p) -> IO (Ptr (GAccessor ix a))
 
 -- -- TODO: Handle non-primitive types.
-instance (GPointable (K1 i a), Rep a ~ x) => GAccessible 0 (K1 i a) where
-  type GAccessor 0 (K1 i a) = a
+instance (GPointable (K1 i a), ConstAccess f (K1 i a), Rep a ~ x, IsPrim a ~ f) => GAccessible 0 (K1 i a) where
+  type GAccessor 0 (K1 i a) = ConstAccessor (IsPrim a) (K1 i a)
 
   gAccess :: Proxy 0 -> Ptr (K1 i a p) -> IO (Ptr (GAccessor 0 (K1 i a)))
-  gAccess _ = pure . castPtr
+  gAccess _ = constAccess (Proxy :: Proxy f)
   {-# INLINE gAccess #-}
 
 instance (GAccessible ix a) => GAccessible ix (M1 i c a) where
@@ -52,6 +52,24 @@ instance (ProductAccess f ix (a :*: b), IsZero ix ~ f) => GAccessible ix (a :*: 
 type family IsZero (n :: Nat) :: Bool where
   IsZero 0 = 'True
   IsZero _ = 'False
+
+class ConstAccess (f :: Bool) a where
+  type ConstAccessor f a
+  constAccess :: Proxy f -> Ptr (a p) -> IO (Ptr (ConstAccessor f a))
+
+instance ConstAccess 'True (K1 i a) where
+  type ConstAccessor 'True (K1 i a) = a
+
+  constAccess :: Proxy 'True -> Ptr (K1 i a p) -> IO (Ptr (ConstAccessor 'True (K1 i a)))
+  constAccess _ = pure . castPtr
+  {-# INLINE constAccess #-}
+
+instance ConstAccess 'False (K1 i a) where
+  type ConstAccessor 'False (K1 i a) = a
+
+  constAccess :: Proxy 'False -> Ptr (K1 i a p) -> IO (Ptr (ConstAccessor 'False (K1 i a)))
+  constAccess _ = load . castPtr
+  {-# INLINE constAccess #-}
 
 class ProductAccess (f :: Bool) (ix :: Nat) a where
   type ProductAccessor f ix a
