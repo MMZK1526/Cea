@@ -86,8 +86,8 @@ fibCea 0 = pure 0
 fibCea 1 = pure 1
 fibCea n = do
   ptr <- Cea.make $ IntTuple 0 1
-  let ptrA = Cea.access (Proxy @0) ptr :: Ptr Int
-      ptrB = Cea.access (Proxy @1) ptr :: Ptr Int
+  let ptrA = Cea.access (Proxy @0) ptr
+      ptrB = Cea.access (Proxy @1) ptr
   replicateM_ (n - 2) $ do
     a <- Cea.load ptrA
     b <- Cea.load ptrB
