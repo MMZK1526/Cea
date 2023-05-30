@@ -1,12 +1,11 @@
 import qualified Cea.Pointer as Cea
 import qualified Cea.Pointer.Accessor as Cea
 import           Control.Monad
+import           Criterion.Main
 import           Data.Int
 import           Foreign.Ptr
 import           Foreign.Storable
 import           GHC.Generics
-import Data.Data (Proxy(..))
-import Criterion.Main
 
 data Int8Tuple = Int8Tuple Int8 Int8
   deriving stock (Eq, Ord, Show, Generic)
@@ -68,11 +67,8 @@ demoNestedTuples = do
   print val'
   -- Use accessor to modify each field of the nested tuple.
   putStrLn $ "-- Modifying the content of " ++ show ptr
-  ptrA <- Cea.access (Proxy @0) ptr
-  ptrB <- Cea.access (Proxy @1) ptr
-  ptr3 <- Cea.access (Proxy @0) ptrB
-  Cea.store ptrA $ Int8Tuple 11 45
-  Cea.store ptr3 14
+  Cea.storeAt @0 ptr $ Int8Tuple 11 45
+  Cea.storesAt @'[1, 0] ptr 14
   putStrLn $ "-- Loading the content of " ++ show ptr
   val2 <- Cea.load ptr
   print val2
@@ -96,21 +92,19 @@ fibCea 0 = pure 0
 fibCea 1 = pure 1
 fibCea n = do
   ptr  <- Cea.make $ IntTuple 0 1
-  ptrA <- Cea.access (Proxy @0) ptr
-  ptrB <- Cea.access (Proxy @1) ptr
   replicateM_ (n - 2) $ do
-    a <- Cea.load ptrA
-    b <- Cea.load ptrB
-    Cea.store ptrA b
-    Cea.store ptrB (a + b)
+    a <- Cea.loadAt @0 ptr
+    b <- Cea.loadAt @1 ptr
+    Cea.storeAt @0 ptr b
+    Cea.storeAt @1 ptr (a + b)
   IntTuple a b <- Cea.load ptr
   pure $ a + b
 
 main :: IO ()
 main = do
-  -- let n = 10000
-  -- defaultMain
-    -- [ bench "fib" $ whnf fib n
-    -- , bench "fibCea" $ whnfAppIO fibCea n ]
+  let n = 10000
+  defaultMain
+    [ bench "fib" $ whnf fib n
+    , bench "fibCea" $ whnfAppIO fibCea n ]
   -- demoPrimitive >> putStrLn ""
-  demoNestedTuples >> putStrLn ""
+  -- demoNestedTuples >> putStrLn ""
