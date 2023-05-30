@@ -1,6 +1,13 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
 
-module Cea.Pointer.Accessor where
+module Cea.Pointer.Accessor
+  ( access
+  , accesses
+  , loadAt
+  , loadsAt
+  , storeAt
+  , storesAt
+  ) where
 
 import           Cea.Pointer
 import           Data.Proxy
