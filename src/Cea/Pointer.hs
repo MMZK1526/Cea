@@ -346,7 +346,7 @@ instance Pointable Double where
 -- | A wrapper used for deriving @Pointable@ instances for @Generic@ types.
 newtype WithPointable a = WithPointable { unWithPointable :: a }
 
--- The instance is derived from @GPoinable@, a generic version of @Pointable@.
+-- The instance is derived from @GPointable@, a generic version of @Pointable@.
 instance (Generic a, GPointable (Rep a), KnownNat (SizeOf (WithPointable a)))
   => Pointable (WithPointable a) where
     -- Note that @GSizeOf@ does not build @Nat@ kinds, and we convert it via
