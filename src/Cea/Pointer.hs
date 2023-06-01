@@ -557,7 +557,9 @@ instance (Pointable a, KnownNat (SizeOf a)) => K1Helper 'False (K1 i a) where
     store ptr' $ unK1 a
   {-# INLINE k1GStore #-}
 
--- TODO: Explain @MkSpace@.
+-- Store and load for primitive and non-primitive fields are different, hence
+-- the helper type class @MkSpace@ is introduced to dispatch the appropriate
+-- implementation.
 instance ( KnownNat (ToNat (GSizeOf (a :*: b)))
          , GPointable a
          , GPointable b
@@ -593,7 +595,9 @@ instance ( KnownNat (ToNat (GSizeOf (a :*: b)))
       gStore (castPtr ptr `plusPtr` slSize (Proxy @f) (Proxy @a)) b
     {-# INLINE gStore #-}
 
--- TODO: Explain @MkSpace@.
+-- | Determines the size for store and load. For non-primitive fields, it should
+-- be always the pointer size, i.e. 8 bytes. For primitive fields, it should be
+-- the size of the field.
 class MkSpace (f :: Bool) (a :: * -> *) where
   type SLSize f a :: MyNat
 
