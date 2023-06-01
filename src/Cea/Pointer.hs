@@ -347,7 +347,9 @@ instance Pointable Double where
 newtype WithPointable a = WithPointable { unWithPointable :: a }
 
 -- The instance is derived from @GPointable@, a generic version of @Pointable@.
-instance (Generic a, GPointable (Rep a), Val (SizeOf (WithPointable a)), KnownBool (GIsPrim (Rep a)))
+instance ( Generic a
+         , GPointable (Rep a)
+         , KnownBool (GIsPrim (Rep a)) )
   => Pointable (WithPointable a) where
     -- Note that @GSizeOf@ does not build @Nat@ kinds, and we convert it via
     -- @ToNat@. This is because GHC's evaluation strategy may not converge for
@@ -590,7 +592,11 @@ instance (Val (GSizeOf a), KnownBool f) => MkSpace f a where
 -- If we wrap it using @MyNat@, then @GSizeOf XRec@ will be
 -- @'Si (GIsPrim XRec) XRec 8@, which then simplifies to @8@ since @XRec@ cannot
 -- be further evaluated.
-data MyNat = Zero | Succ MyNat | TypeNat Type | Si Bool MyNat MyNat | Sum MyNat MyNat
+data MyNat = Zero
+           | Succ MyNat
+           | TypeNat Type
+           | Si Bool MyNat MyNat
+           | Sum MyNat MyNat
 
 type family FromNat (n :: Nat) :: MyNat where
   FromNat 0 = 'Zero
