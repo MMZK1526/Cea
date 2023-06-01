@@ -31,9 +31,9 @@ import           GHC.TypeLits
 -- > data Foo = Foo Int8 Int16 Int32 Int64
 -- >   deriving (Generic)
 -- >   deriving (Pointable) via WithPointable Foo
-class Pointable a where
+class (Val (SizeOf a), KnownBool (IsPrim a)) => Pointable a where
   -- | The size of the type in bytes.
-  type SizeOf a :: Nat
+  type SizeOf a :: MyNat
 
   -- | Whether the type is a primitive type. If the type is not a primitive,
   -- it will be stored via a layer of pointer indirection.
@@ -43,8 +43,8 @@ class Pointable a where
   type IsPrim a :: Bool
 
   -- | Term-level version of @SizeOf@.
-  sizeOf :: KnownNat (SizeOf a) => a -> Int
-  sizeOf _ = fromIntegral $ natVal (Proxy :: Proxy (SizeOf a))
+  sizeOf :: a -> Int
+  sizeOf _ = fromIntegral $ val (Proxy :: Proxy (SizeOf a))
 
   -- | Create a new pointer and store the value in it.
   make :: a -> IO (Ptr a)
@@ -56,7 +56,7 @@ class Pointable a where
   store :: Ptr a -> a -> IO ()
 
 instance Pointable Int8 where
-  type SizeOf Int8 = 1
+  type SizeOf Int8 = FromNat 1
 
   type IsPrim Int8 = 'True
 
@@ -73,7 +73,7 @@ instance Pointable Int8 where
   {-# INLINE store #-}
 
 instance Pointable Int16 where
-  type SizeOf Int16 = 2
+  type SizeOf Int16 = FromNat 2
 
   type IsPrim Int16 = 'True
 
@@ -90,7 +90,7 @@ instance Pointable Int16 where
   {-# INLINE store #-}
 
 instance Pointable Int32 where
-  type SizeOf Int32 = 4
+  type SizeOf Int32 = FromNat 4
 
   type IsPrim Int32 = 'True
 
@@ -107,7 +107,7 @@ instance Pointable Int32 where
   {-# INLINE store #-}
 
 instance Pointable Int64 where
-  type SizeOf Int64 = 8
+  type SizeOf Int64 = FromNat 8
 
   type IsPrim Int64 = 'True
 
@@ -124,7 +124,7 @@ instance Pointable Int64 where
   {-# INLINE store #-}
 
 instance Pointable Word8 where
-  type SizeOf Word8 = 1
+  type SizeOf Word8 = FromNat 1
 
   type IsPrim Word8 = 'True
 
@@ -141,7 +141,7 @@ instance Pointable Word8 where
   {-# INLINE store #-}
 
 instance Pointable Word16 where
-  type SizeOf Word16 = 2
+  type SizeOf Word16 = FromNat 2
 
   type IsPrim Word16 = 'True
 
@@ -158,7 +158,7 @@ instance Pointable Word16 where
   {-# INLINE store #-}
 
 instance Pointable Word32 where
-  type SizeOf Word32 = 4
+  type SizeOf Word32 = FromNat 4
 
   type IsPrim Word32 = 'True
 
@@ -175,7 +175,7 @@ instance Pointable Word32 where
   {-# INLINE store #-}
 
 instance Pointable Word64 where
-  type SizeOf Word64 = 8
+  type SizeOf Word64 = FromNat 8
 
   type IsPrim Word64 = 'True
 
@@ -194,7 +194,7 @@ instance Pointable Word64 where
 -- We want to know the size of "Int" at compile time, so we will always assume
 -- it takes eight bytes.
 instance Pointable Int where
-  type SizeOf Int = 8
+  type SizeOf Int = FromNat 8
 
   type IsPrim Int = 'True
 
@@ -213,7 +213,7 @@ instance Pointable Int where
 -- We want to know the size of "Word" at compile time, so we will always assume
 -- it takes eight bytes.
 instance Pointable Word where
-  type SizeOf Word = 8
+  type SizeOf Word = FromNat 8
 
   type IsPrim Word = 'True
 
@@ -232,7 +232,7 @@ instance Pointable Word where
 -- We want to know the size of "IntPtr" at compile time, so we will always
 -- assume it takes eight bytes.
 instance Pointable IntPtr where
-  type SizeOf IntPtr = 8
+  type SizeOf IntPtr = FromNat 8
 
   type IsPrim IntPtr = 'True
 
@@ -252,7 +252,7 @@ instance Pointable IntPtr where
 -- it takes eight bytes.
 
 instance Pointable (Ptr a) where
-  type SizeOf (Ptr a) = 8
+  type SizeOf (Ptr a) = FromNat 8
 
   type IsPrim (Ptr a) = 'True
 
@@ -271,7 +271,7 @@ instance Pointable (Ptr a) where
 -- We want to know the size of "Char" at compile time, so we will always assume
 -- it takes four bytes.
 instance Pointable Char where
-  type SizeOf Char = 4
+  type SizeOf Char = FromNat 4
 
   type IsPrim Char = 'True
 
@@ -288,7 +288,7 @@ instance Pointable Char where
   {-# INLINE store #-}
 
 instance Pointable () where
-  type SizeOf () = 0
+  type SizeOf () = FromNat 0
 
   type IsPrim () = 'True
 
@@ -305,7 +305,7 @@ instance Pointable () where
   {-# INLINE store #-}
 
 instance Pointable Float where
-  type SizeOf Float = 4
+  type SizeOf Float = FromNat 4
 
   type IsPrim Float = 'True
 
@@ -322,7 +322,7 @@ instance Pointable Float where
   {-# INLINE store #-}
 
 instance Pointable Double where
-  type SizeOf Double = 8
+  type SizeOf Double = FromNat 8
 
   type IsPrim Double = 'True
 
@@ -347,12 +347,12 @@ instance Pointable Double where
 newtype WithPointable a = WithPointable { unWithPointable :: a }
 
 -- The instance is derived from @GPointable@, a generic version of @Pointable@.
-instance (Generic a, GPointable (Rep a), KnownNat (SizeOf (WithPointable a)))
+instance (Generic a, GPointable (Rep a), Val (SizeOf (WithPointable a)), KnownBool (GIsPrim (Rep a)))
   => Pointable (WithPointable a) where
     -- Note that @GSizeOf@ does not build @Nat@ kinds, and we convert it via
     -- @ToNat@. This is because GHC's evaluation strategy may not converge for
     -- self-referencing types.
-    type SizeOf (WithPointable a) = ToNat (GSizeOf (Rep a))
+    type SizeOf (WithPointable a) = GSizeOf (Rep a)
 
     type IsPrim (WithPointable a) = GIsPrim (Rep a)
 
@@ -380,14 +380,14 @@ instance (Generic a, GPointable (Rep a), KnownNat (SizeOf (WithPointable a)))
 -- Generic Pointable
 --------------------------------------------------------------------------------
 
-class GPointable a where
+class (Val (GSizeOf a)) => GPointable a where
   -- See @MyNat@ for more information.
   type GSizeOf a :: MyNat
 
   type GIsPrim a :: Bool
 
-  gSizeOf :: KnownNat (ToNat (GSizeOf a)) => a p -> Int
-  gSizeOf = const . fromIntegral $ natVal (Proxy @(ToNat (GSizeOf a)))
+  gSizeOf :: a p -> Int
+  gSizeOf = const . fromIntegral $ val (Proxy @(GSizeOf a))
   {-# INLINE gSizeOf #-}
 
   gMake :: a p -> IO (Ptr (a p))
@@ -397,7 +397,7 @@ class GPointable a where
   gStore :: Ptr (a p) -> a p -> IO ()
 
 instance GPointable U1 where
-  type GSizeOf U1 = 'MyNat 0
+  type GSizeOf U1 = FromNat 0
 
   type GIsPrim U1 = 'True
 
@@ -413,59 +413,56 @@ instance GPointable U1 where
   gStore = const . const $ pure ()
   {-# INLINE gStore #-}
 
-instance (GPointable a, KnownNat (ToNat (GSizeOf (M1 D c a))))
-  => GPointable (M1 D c a) where
-    type GSizeOf (M1 D c a) = GSizeOf a
+instance GPointable a => GPointable (M1 D c a) where
+  type GSizeOf (M1 D c a) = GSizeOf a
 
-    type GIsPrim (M1 D c a) = 'False -- 'False for custom data types
+  type GIsPrim (M1 D c a) = 'False -- 'False for custom data types
 
-    gMake :: M1 i c a p -> IO (Ptr (M1 D c a p))
-    gMake = fmap castPtr . gMake . unM1
-    {-# INLINE gMake #-}
+  gMake :: M1 i c a p -> IO (Ptr (M1 D c a p))
+  gMake = fmap castPtr . gMake . unM1
+  {-# INLINE gMake #-}
 
-    gLoad :: Ptr (M1 D c a p) -> IO (M1 D c a p)
-    gLoad = fmap M1 . gLoad . castPtr
-    {-# INLINE gLoad #-}
+  gLoad :: Ptr (M1 D c a p) -> IO (M1 D c a p)
+  gLoad = fmap M1 . gLoad . castPtr
+  {-# INLINE gLoad #-}
 
-    gStore :: Ptr (M1 D c a p) -> M1 D c a p -> IO ()
-    gStore ptr = gStore (castPtr ptr) . unM1
-    {-# INLINE gStore #-}
+  gStore :: Ptr (M1 D c a p) -> M1 D c a p -> IO ()
+  gStore ptr = gStore (castPtr ptr) . unM1
+  {-# INLINE gStore #-}
 
-instance (GPointable a, KnownNat (ToNat (GSizeOf (M1 C c a))))
-  => GPointable (M1 C c a) where
-    type GSizeOf (M1 C c a) = GSizeOf a
+instance GPointable a => GPointable (M1 C c a) where
+  type GSizeOf (M1 C c a) = GSizeOf a
 
-    type GIsPrim (M1 C c a) = GIsPrim a
+  type GIsPrim (M1 C c a) = GIsPrim a
 
-    gMake :: M1 i c a p -> IO (Ptr (M1 C c a p))
-    gMake = fmap castPtr . gMake . unM1
-    {-# INLINE gMake #-}
+  gMake :: M1 i c a p -> IO (Ptr (M1 C c a p))
+  gMake = fmap castPtr . gMake . unM1
+  {-# INLINE gMake #-}
 
-    gLoad :: Ptr (M1 C c a p) -> IO (M1 C c a p)
-    gLoad = fmap M1 . gLoad . castPtr
-    {-# INLINE gLoad #-}
+  gLoad :: Ptr (M1 C c a p) -> IO (M1 C c a p)
+  gLoad = fmap M1 . gLoad . castPtr
+  {-# INLINE gLoad #-}
 
-    gStore :: Ptr (M1 C c a p) -> M1 C c a p -> IO ()
-    gStore ptr = gStore (castPtr ptr) . unM1
-    {-# INLINE gStore #-}
+  gStore :: Ptr (M1 C c a p) -> M1 C c a p -> IO ()
+  gStore ptr = gStore (castPtr ptr) . unM1
+  {-# INLINE gStore #-}
 
-instance (GPointable a, KnownNat (ToNat (GSizeOf (M1 S c a))))
-  => GPointable (M1 S c a) where
-    type GSizeOf (M1 S c a) = GSizeOf a
+instance GPointable a => GPointable (M1 S c a) where
+  type GSizeOf (M1 S c a) = GSizeOf a
 
-    type GIsPrim (M1 S c a) = GIsPrim a
+  type GIsPrim (M1 S c a) = GIsPrim a
 
-    gMake :: M1 i c a p -> IO (Ptr (M1 S c a p))
-    gMake = fmap castPtr . gMake . unM1
-    {-# INLINE gMake #-}
+  gMake :: M1 i c a p -> IO (Ptr (M1 S c a p))
+  gMake = fmap castPtr . gMake . unM1
+  {-# INLINE gMake #-}
 
-    gLoad :: Ptr (M1 S c a p) -> IO (M1 S c a p)
-    gLoad = fmap M1 . gLoad . castPtr
-    {-# INLINE gLoad #-}
+  gLoad :: Ptr (M1 S c a p) -> IO (M1 S c a p)
+  gLoad = fmap M1 . gLoad . castPtr
+  {-# INLINE gLoad #-}
 
-    gStore :: Ptr (M1 S c a p) -> M1 S c a p -> IO ()
-    gStore ptr = gStore (castPtr ptr) . unM1
-    {-# INLINE gStore #-}
+  gStore :: Ptr (M1 S c a p) -> M1 S c a p -> IO ()
+  gStore ptr = gStore (castPtr ptr) . unM1
+  {-# INLINE gStore #-}
 
 -- The implementation for primitive and non-primitive types are evidently
 -- different. For example, in terms of @gMake@, we can just allocate
@@ -475,101 +472,53 @@ instance (GPointable a, KnownNat (ToNat (GSizeOf (M1 S c a))))
 --
 -- We use @IsPrim@ to distinguish the two cases and dispatch the appropriate
 -- implementation in @K1Helper@.
-instance ( KnownNat (ToNat (GSizeOf (K1 i a)))
+instance ( Val (GSizeOf (K1 i a))
          , Pointable a
-         , IsPrim a ~ f
-         , K1Helper f (K1 i a) )
+         , IsPrim a ~ f )
   => GPointable (K1 i a) where
-    type GSizeOf (K1 i a) = 'Si (IsPrim a) ('TypeNat a) ('MyNat 8)
+    type GSizeOf (K1 i a) = 'Si (IsPrim a) ('TypeNat a) (FromNat 8)
 
     type GIsPrim (K1 i a) = IsPrim a
 
     gMake :: K1 i a p -> IO (Ptr (K1 i a p))
-    gMake = k1GMake (Proxy @f)
+    gMake a = if boolVal (Proxy @f)
+      then fmap castPtr . make $ unK1 a
+      else do 
+        ptr  <- make (unK1 a)
+        ptr' <- mallocBytes 8
+        poke ptr' ptr
+        pure $ castPtr ptr'
     {-# INLINE gMake #-}
 
     gLoad :: Ptr (K1 i a p) -> IO (K1 i a p)
-    gLoad = k1GLoad (Proxy @f)
+    gLoad ptr = if boolVal (Proxy @f)
+      then fmap K1 . load $ castPtr ptr
+      else do
+        ptr' <- peek (castPtr ptr :: Ptr (Ptr a))
+        K1 <$> load ptr'
     {-# INLINE gLoad #-}
 
-    gStore :: KnownNat (ToNat (GSizeOf (K1 i a)))
-           => Ptr (K1 i a p) -> K1 i a p -> IO ()
-    gStore = k1GStore (Proxy @f)
+    gStore :: Ptr (K1 i a p) -> K1 i a p -> IO ()
+    gStore ptr a = if boolVal (Proxy @f)
+      then store (castPtr ptr) (unK1 a)
+      else do
+        ptr' <- peek (castPtr ptr :: Ptr (Ptr a))
+        store ptr' (unK1 a)
     {-# INLINE gStore #-}
-
-class K1Helper (f :: Bool) k where
-  k1GMake :: KnownNat (ToNat (GSizeOf k)) => Proxy f -> k p -> IO (Ptr (k p))
-
-  k1GLoad :: KnownNat (ToNat (GSizeOf k)) => Proxy f -> Ptr (k p) -> IO (k p)
-
-  k1GStore :: KnownNat (ToNat (GSizeOf k))
-           => Proxy f -> Ptr (k p) -> k p -> IO ()
-
-instance (Pointable a, KnownNat (SizeOf a)) => K1Helper 'True (K1 i a) where
-  k1GMake :: ( Pointable a
-             , KnownNat (SizeOf a)
-             , KnownNat (ToNat (GSizeOf (K1 i a))) ) 
-          => Proxy 'True -> K1 i a p -> IO (Ptr (K1 i a p))
-  k1GMake _ = fmap castPtr . make . unK1
-  {-# INLINE k1GMake #-}
-
-  k1GLoad :: ( Pointable a
-             , KnownNat (SizeOf a)
-             , KnownNat (ToNat (GSizeOf (K1 i a))) )
-          => Proxy 'True -> Ptr (K1 i a p) -> IO (K1 i a p)
-  k1GLoad _ = fmap K1 . load . castPtr
-  {-# INLINE k1GLoad #-}
-
-  k1GStore :: ( Pointable a
-              , KnownNat (SizeOf a)
-              , KnownNat (ToNat (GSizeOf (K1 i a))) )
-           => Proxy 'True -> Ptr (K1 i a p) -> K1 i a p -> IO ()
-  k1GStore _ ptr = store (castPtr ptr) . unK1
-  {-# INLINE k1GStore #-}
-
-instance (Pointable a, KnownNat (SizeOf a)) => K1Helper 'False (K1 i a) where
-  k1GMake :: ( Pointable a
-             , KnownNat (SizeOf a)
-             , KnownNat (ToNat (GSizeOf (K1 i a))) )
-          => Proxy 'False -> K1 i a p -> IO (Ptr (K1 i a p))
-  k1GMake _ a = do
-    ptr <- make (unK1 a)
-    ptr' <- mallocBytes 8
-    poke ptr' ptr
-    pure $ castPtr ptr'
-  {-# INLINE k1GMake #-}
-
-  k1GLoad :: ( Pointable a
-             , KnownNat (SizeOf a)
-             , KnownNat (ToNat (GSizeOf (K1 i a))) )
-          => Proxy 'False -> Ptr (K1 i a p) -> IO (K1 i a p)
-  k1GLoad _ ptr = do
-    ptr' <- peek (castPtr ptr :: Ptr (Ptr a))
-    K1 <$> load ptr'
-  {-# INLINE k1GLoad #-}
-
-  k1GStore :: ( Pointable a
-              , KnownNat (SizeOf a)
-              , KnownNat (ToNat (GSizeOf (K1 i a))) )
-           => Proxy 'False -> Ptr (K1 i a p) -> K1 i a p -> IO ()
-  k1GStore _ ptr a = do
-    ptr' <- peek (castPtr ptr :: Ptr (Ptr a))
-    store ptr' $ unK1 a
-  {-# INLINE k1GStore #-}
 
 -- Store and load for primitive and non-primitive fields are different, hence
 -- the helper type class @MkSpace@ is introduced to dispatch the appropriate
 -- implementation.
-instance ( KnownNat (ToNat (GSizeOf (a :*: b)))
+instance ( Val (GSizeOf (a :*: b))
          , GPointable a
          , GPointable b
-         , KnownNat (ToNat (SLSize f a))
+         , Val (SLSize f a)
          , GIsPrim a ~ f
          , GIsPrim b ~ g
-         , MkSpace f a
-         , MkSpace g b )
+         , KnownBool f
+         , KnownBool g )
   => GPointable (a :*: b) where
-    type GSizeOf (a :*: b) = 'MyNat (ToNat (GSizeOf a) + ToNat (GSizeOf b))
+    type GSizeOf (a :*: b) = Sum (GSizeOf a) (GSizeOf b)
 
     type GIsPrim (a :*: b) = 'False
 
@@ -598,29 +547,23 @@ instance ( KnownNat (ToNat (GSizeOf (a :*: b)))
 -- | Determines the size for store and load. For non-primitive fields, it should
 -- be always the pointer size, i.e. 8 bytes. For primitive fields, it should be
 -- the size of the field.
-class MkSpace (f :: Bool) (a :: * -> *) where
+class Val (SLSize f a) => MkSpace (f :: Bool) (a :: * -> *) where
   type SLSize f a :: MyNat
 
-  slSize :: KnownNat (ToNat (SLSize f a)) => Proxy f -> Proxy a -> Int
-  slSize _ _ = fromIntegral $ natVal (Proxy @(ToNat (SLSize f a)))
+  slSize :: Proxy f -> Proxy a -> Int
+  slSize _ _ = fromIntegral $ val (Proxy @(SLSize f a))
 
   mkSpace :: Ptr (a p) -> Proxy f -> Proxy a -> IO ()
 
-instance MkSpace 'True a where
-  type SLSize 'True a = 'MyNat (ToNat (GSizeOf a))
+instance (Val (GSizeOf a), KnownBool f) => MkSpace f a where
+  type SLSize f a = Si f (GSizeOf a) (FromNat 8)
 
-  mkSpace :: Ptr (a p) -> Proxy 'True -> Proxy a -> IO ()
-  mkSpace _ _ _ = pure ()
-  {-# INLINE mkSpace #-}
-
-instance (GPointable a, KnownNat (ToNat (GSizeOf a))) => MkSpace 'False a where
-  type SLSize 'False a = 'MyNat 8
-
-  mkSpace :: (GPointable a, KnownNat (ToNat (GSizeOf a)))
-          => Ptr (a p) -> Proxy 'False -> Proxy a -> IO ()
-  mkSpace ptr _ _ = do
-    ptr' <- mallocBytes . fromIntegral $ natVal (Proxy @(ToNat (GSizeOf a)))
-    poke (castPtr ptr :: Ptr (Ptr Int64)) (castPtr ptr' :: Ptr Int64)
+  mkSpace :: Ptr (a p) -> Proxy f -> Proxy a -> IO ()
+  mkSpace ptr _ _ = if boolVal (Proxy @f)
+    then pure ()
+    else do
+      ptr' <- mallocBytes . fromIntegral $ val (Proxy @(GSizeOf a))
+      poke (castPtr ptr :: Ptr (Ptr Int64)) (castPtr ptr' :: Ptr Int64)
   {-# INLINE mkSpace #-}
 
 
@@ -647,10 +590,61 @@ instance (GPointable a, KnownNat (ToNat (GSizeOf a))) => MkSpace 'False a where
 -- If we wrap it using @MyNat@, then @GSizeOf XRec@ will be
 -- @'Si (GIsPrim XRec) XRec 8@, which then simplifies to @8@ since @XRec@ cannot
 -- be further evaluated.
-data MyNat = MyNat Nat | TypeNat Type | Si Bool MyNat MyNat
+data MyNat = Zero | Succ MyNat | TypeNat Type | Si Bool MyNat MyNat | Sum MyNat MyNat
+
+type family FromNat (n :: Nat) :: MyNat where
+  FromNat 0 = 'Zero
+  FromNat n = 'Succ (FromNat (n - 1))
 
 type family ToNat (n :: MyNat) :: Nat where
-  ToNat ('MyNat n) = n
-  ToNat ('TypeNat t) = SizeOf t
+  ToNat 'Zero = 0
+  ToNat ('Succ n) = 1 + ToNat n
+  ToNat ('TypeNat t) = ToNat (SizeOf t)
   ToNat ('Si 'True a b) = ToNat a
   ToNat ('Si 'False a b) = ToNat b
+  ToNat ('Sum a b) = ToNat a + ToNat b
+
+class KnownBool (b :: Bool) where
+  boolVal :: Proxy b -> Bool
+
+instance KnownBool 'True where
+  boolVal :: Proxy 'True -> Bool
+  boolVal _ = True
+  {-# INLINE boolVal #-}
+
+instance KnownBool 'False where
+  boolVal :: Proxy 'False -> Bool
+  boolVal _ = False
+  {-# INLINE boolVal #-}
+
+class Val (n :: MyNat) where
+  val :: Proxy n -> Int
+
+instance Val 'Zero where
+  val :: Proxy 'Zero -> Int
+  val _ = 0
+  {-# INLINE val #-}
+
+instance Val n => Val ('Succ n) where
+  val :: Proxy ('Succ n) -> Int
+  val _ = 1 + val (Proxy @n)
+  {-# INLINE val #-}
+
+instance Val (SizeOf n) => Val ('TypeNat n) where
+  val :: Proxy ('TypeNat n) -> Int
+  val _ = fromIntegral $ val (Proxy @(SizeOf n))
+  {-# INLINE val #-}
+
+instance (Val a, Val b, KnownBool f) => Val ('Si f a b) where
+  val :: Proxy ('Si f a b) -> Int
+  val _ = if boolVal (Proxy @f) then val (Proxy @a) else val (Proxy @b)
+  {-# INLINE val #-}
+
+instance (Val a, Val b) => Val ('Sum a b) where
+  val :: Proxy ('Sum a b) -> Int
+  val _ = val (Proxy @a) + val (Proxy @b)
+  {-# INLINE val #-}
+
+data Tuple2 a b = Tuple2 a b
+  deriving (Generic)
+  deriving Pointable via WithPointable (Tuple2 a b)
