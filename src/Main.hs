@@ -86,12 +86,14 @@ demoBuiltinTuples = do
   putStrLn $ "-- Loading the content of " ++ show ptr' ++ " as 'Ptr (Int8, Int8, Int8, Int8)'"
   val' <- Cea.load ptr'
   print val'
-  -- Use accessor to modify each field of the nested tuple.
+  -- Use accessor to modify each field of the flattened tuple.
   putStrLn $ "-- Modifying the content of " ++ show ptr
-  Cea.storeAt @0 ptr (11, 45)
-  Cea.storesAt @'[1, 0] ptr 14
-  putStrLn $ "-- Loading the content of " ++ show ptr
-  val2 <- Cea.load ptr
+  Cea.storeAt @0 ptr' 11
+  Cea.storeAt @1 ptr' 45
+  Cea.storeAt @2 ptr' 14
+  Cea.storeAt @3 ptr' 0
+  putStrLn $ "-- Loading the content of " ++ show ptr'
+  val2 <- Cea.load ptr'
   print val2
 
 data IntTuple = IntTuple Int Int
@@ -123,10 +125,10 @@ fibCea n = do
 
 main :: IO ()
 main = do
-  let n = 10000
-  defaultMain
-    [ bench "fib" $ whnf fib n
-    , bench "fibCea" $ whnfAppIO fibCea n ]
-  -- demoPrimitive >> putStrLn ""
-  -- demoNestedTuples >> putStrLn ""
-  -- demoBuiltinTuples >> putStrLn ""
+  -- let n = 10000
+  -- defaultMain
+  --   [ bench "fib" $ whnf fib n
+  --   , bench "fibCea" $ whnfAppIO fibCea n ]
+  demoPrimitive >> putStrLn ""
+  demoNestedTuples >> putStrLn ""
+  demoBuiltinTuples >> putStrLn ""
