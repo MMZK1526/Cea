@@ -43,8 +43,8 @@ class (Val (SizeOf a), KnownBool (IsPrim a)) => Pointable a where
   type IsPrim a :: Bool
 
   -- | Term-level version of @SizeOf@.
-  sizeOf :: a -> Int
-  sizeOf _ = fromIntegral $ val (Proxy :: Proxy (SizeOf a))
+  size :: a -> Int
+  size _ = fromIntegral $ val (Proxy :: Proxy (SizeOf a))
 
   -- | Create a new pointer and store the value in it.
   make :: a -> IO (Ptr a)
@@ -478,9 +478,9 @@ class (Val (GSizeOf a)) => GPointable a where
 
   type GIsPrim a :: Bool
 
-  gSizeOf :: a p -> Int
-  gSizeOf = const . fromIntegral $ val (Proxy @(GSizeOf a))
-  {-# INLINE gSizeOf #-}
+  gSize :: a p -> Int
+  gSize = const . fromIntegral $ val (Proxy @(GSizeOf a))
+  {-# INLINE gSize #-}
 
   gMake :: a p -> IO (Ptr (a p))
 
@@ -558,8 +558,8 @@ instance GPointable a => GPointable (M1 S c a) where
 
 -- The implementation for primitive and non-primitive types are evidently
 -- different. For example, in terms of @gMake@, we can just allocate
--- @gSizeOf@ bytes for a primitive type, but for non-primitives we need to
--- allocate 8 bytes for the pointer before allocating @gSizeOf@ bytes and store
+-- @gSize@ bytes for a primitive type, but for non-primitives we need to
+-- allocate 8 bytes for the pointer before allocating @gSize@ bytes and store
 -- it into the reference pointer.
 --
 -- We use @IsPrim@ to distinguish the two cases and dispatch the appropriate
@@ -616,7 +616,7 @@ instance ( Val (GSizeOf (a :*: b))
 
     gMake :: (a :*: b) p -> IO (Ptr ((a :*: b) p))
     gMake a = do
-      ptr <- mallocBytes $ gSizeOf a
+      ptr <- mallocBytes $ gSize a
       mkSpace (castPtr ptr) (Proxy @f) (Proxy @a)
       mkSpace (castPtr ptr `plusPtr` 8) (Proxy @g) (Proxy @b)
       gStore ptr a
