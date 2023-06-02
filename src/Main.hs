@@ -1,5 +1,5 @@
-import qualified Cea.Pointer as Cea
-import qualified Cea.Pointer.Accessor as Cea
+import           Cea.Pointer
+import           Cea.Pointer.Accessor
 import           Control.Monad
 import           Criterion.Main
 import           Data.Int
@@ -9,7 +9,7 @@ import           GHC.Generics
 
 data Tuple a b = Tuple a b
   deriving stock (Eq, Ord, Show, Generic)
-  deriving Cea.Pointable via Cea.WithPointable (Tuple a b)
+  deriving Pointable via WithPointable (Tuple a b)
 
 type Int8Tuple = Tuple Int8 Int8
 type TupleOfInt8Tuples = Tuple Int8Tuple Int8Tuple
@@ -20,21 +20,21 @@ demoPrimitive = do
   putStrLn "Demo Primitive:\n"
   let int32 = 14514 :: Int32
   putStrLn $ "-- Storing " ++ show int32
-  ptr <- Cea.make int32
+  ptr <- make int32
   putStrLn $ "The address is " ++ show ptr ++ ", which may change at each run"
   putStrLn $ "-- Loading the content of " ++ show ptr
-  val <- Cea.load ptr -- val == int32
+  val <- load ptr -- val == int32
   print val
   -- If we cast the pointer to "Ptr Int8", we would see the truncated value.
   let ptr' = castPtr ptr :: Ptr Int8
   putStrLn $ "-- Loading the content of " ++ show ptr' ++ " as 'Ptr Int8'"
-  val' <- Cea.load ptr'
+  val' <- load ptr'
   print val'
   -- If we cast the pointer to "Ptr Char", we would see the corresponding
   -- character.
   let ptr'' = castPtr ptr :: Ptr Char
   putStrLn $ "-- Loading the content of " ++ show ptr'' ++ " as 'Ptr Char'"
-  val'' <- Cea.load ptr''
+  val'' <- load ptr''
   putStrLn [val'']
 
 demoNestedTuples :: IO ()
@@ -49,24 +49,24 @@ demoNestedTuples = do
   -- non-primitive type, they will be stored as pointers with size of 8 bytes.
   -- Within each "Int8Tuple", the fields are primitive types, so they will be
   -- stored as values, each taking 2 bytes (1 for each "Int8").
-  ptr  <- Cea.make tupleOfInt8Tuples
+  ptr  <- make tupleOfInt8Tuples
   putStrLn $ "The address is " ++ show ptr ++ ", which may change at each run"
   putStrLn $ "-- Loading the content of " ++ show ptr
-  val  <- Cea.load ptr -- val == tupleOfInt8Tuples
+  val  <- load ptr -- val == tupleOfInt8Tuples
   print val
   -- If we cast the pointer to "PtrTuple", since the fields are pointers,
   -- we would see the address of the "Int8Tuple"s rather some representation of
   -- their values.
   let ptr' = castPtr ptr :: Ptr PtrTuple
   putStrLn $ "-- Loading the content of " ++ show ptr' ++ " as 'PtrTuple'"
-  val' <- Cea.load ptr'
+  val' <- load ptr'
   print val'
   -- Use accessor to modify each field of the nested tuple.
   putStrLn $ "-- Modifying the content of " ++ show ptr
-  Cea.storeAt @0 ptr $ Tuple 11 45
-  Cea.storesAt @'[1, 0] ptr 14
+  storeAt @0 ptr $ Tuple 11 45
+  storesAt @'[1, 0] ptr 14
   putStrLn $ "-- Loading the content of " ++ show ptr
-  val2 <- Cea.load ptr
+  val2 <- load ptr
   print val2
 
 demoBuiltinTuples :: IO ()
@@ -74,31 +74,31 @@ demoBuiltinTuples = do
   putStrLn "Demo Builtin Tuples:\n"
   let tuple = ((1, 2), (3, 4)) :: ((Int8, Int8), (Int8, Int8))
   putStrLn $ "-- Storing " ++ show tuple
-  ptr <- Cea.make tuple
+  ptr <- make tuple
   putStrLn $ "The address is " ++ show ptr ++ ", which may change at each run"
   putStrLn $ "-- Loading the content of " ++ show ptr
-  val <- Cea.load ptr -- val == tuple
+  val <- load ptr -- val == tuple
   print val
   -- Built-in tuples are treated as primitives, thus the elements are stored in
   -- a contiguous memory block. If we "flatten" the content into a quad-tuple,
   -- we would still see the same numbers.
   let ptr' = castPtr ptr :: Ptr (Int8, Int8, Int8, Int8)
   putStrLn $ "-- Loading the content of " ++ show ptr' ++ " as 'Ptr (Int8, Int8, Int8, Int8)'"
-  val' <- Cea.load ptr'
+  val' <- load ptr'
   print val'
   -- Use accessor to modify each field of the flattened tuple.
   putStrLn $ "-- Modifying the content of " ++ show ptr
-  Cea.storeAt @0 ptr' 11
-  Cea.storeAt @1 ptr' 45
-  Cea.storeAt @2 ptr' 14
-  Cea.storeAt @3 ptr' 0
+  storeAt @0 ptr' 11
+  storeAt @1 ptr' 45
+  storeAt @2 ptr' 14
+  storeAt @3 ptr' 0
   putStrLn $ "-- Loading the content of " ++ show ptr'
-  val2 <- Cea.load ptr'
+  val2 <- load ptr'
   print val2
 
 data IntTuple = IntTuple Int Int
   deriving stock (Eq, Ord, Show, Generic)
-  deriving Cea.Pointable via Cea.WithPointable IntTuple
+  deriving Pointable via WithPointable IntTuple
 
 fib :: Int -> Int
 fib 0 = 0
@@ -114,13 +114,13 @@ fibCea :: Int -> IO Int
 fibCea 0 = pure 0
 fibCea 1 = pure 1
 fibCea n = do
-  ptr  <- Cea.make $ Tuple 0 1
+  ptr  <- make $ Tuple 0 1
   replicateM_ (n - 2) $ do
-    a <- Cea.loadAt @0 ptr
-    b <- Cea.loadAt @1 ptr
-    Cea.storeAt @0 ptr b
-    Cea.storeAt @1 ptr (a + b)
-  Tuple a b <- Cea.load ptr
+    a <- loadAt @0 ptr
+    b <- loadAt @1 ptr
+    storeAt @0 ptr b
+    storeAt @1 ptr (a + b)
+  Tuple a b <- load ptr
   pure $ a + b
 
 main :: IO ()
