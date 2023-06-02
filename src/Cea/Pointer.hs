@@ -568,6 +568,95 @@ instance (Val (GSizeOf a), KnownBool f) => MkSpace f a where
       poke (castPtr ptr :: Ptr (Ptr Int64)) (castPtr ptr' :: Ptr Int64)
   {-# INLINE mkSpace #-}
 
+-- The difference between a tuple and a custom record is that a tuple is always
+-- treated as a primitive type, hence when a tuple is used as a field in a
+-- larger data type, it is always allocated in the same chunk of memory as the
+-- parent data type.
+instance (Pointable a, Pointable b) => Pointable (a, b) where
+  type SizeOf (a, b) = SizeOf (P2 a b)
+
+  type IsPrim (a, b) = 'True
+
+  make :: (a, b) -> IO (Ptr (a, b))
+  make (a, b) = castPtr <$> make (P2 a b)
+  {-# INLINE make #-}
+
+  load :: Ptr (a, b) -> IO (a, b)
+  load ptr = do
+    P2 a b <- load (castPtr ptr)
+    pure (a, b)
+  {-# INLINE load #-}
+
+  store :: Ptr (a, b) -> (a, b) -> IO ()
+  store ptr (a, b) = store (castPtr ptr) (P2 a b)
+  {-# INLINE store #-}
+
+instance (Pointable a, Pointable b, Pointable c) => Pointable (a, b, c) where
+  type SizeOf (a, b, c) = SizeOf (P3 a b c)
+
+  type IsPrim (a, b, c) = 'True
+
+  make :: (a, b, c) -> IO (Ptr (a, b, c))
+  make (a, b, c) = castPtr <$> make (P3 a b c)
+  {-# INLINE make #-}
+
+  load :: Ptr (a, b, c) -> IO (a, b, c)
+  load ptr = do
+    P3 a b c <- load (castPtr ptr)
+    pure (a, b, c)
+  {-# INLINE load #-}
+
+  store :: Ptr (a, b, c) -> (a, b, c) -> IO ()
+  store ptr (a, b, c) = store (castPtr ptr) (P3 a b c)
+  {-# INLINE store #-}
+
+instance ( Pointable a
+         , Pointable b
+         , Pointable c
+         , Pointable d )
+  => Pointable (a, b, c, d) where
+    type SizeOf (a, b, c, d) = SizeOf (P4 a b c d)
+
+    type IsPrim (a, b, c, d) = 'True
+
+    make :: (a, b, c, d) -> IO (Ptr (a, b, c, d))
+    make (a, b, c, d) = castPtr <$> make (P4 a b c d)
+    {-# INLINE make #-}
+
+    load :: Ptr (a, b, c, d) -> IO (a, b, c, d)
+    load ptr = do
+      P4 a b c d <- load (castPtr ptr)
+      pure (a, b, c, d)
+    {-# INLINE load #-}
+
+    store :: Ptr (a, b, c, d) -> (a, b, c, d) -> IO ()
+    store ptr (a, b, c, d) = store (castPtr ptr) (P4 a b c d)
+    {-# INLINE store #-}
+
+instance ( Pointable a
+         , Pointable b
+         , Pointable c
+         , Pointable d
+         , Pointable e )
+  => Pointable (a, b, c, d, e) where
+    type SizeOf (a, b, c, d, e) = SizeOf (P5 a b c d e)
+
+    type IsPrim (a, b, c, d, e) = 'True
+
+    make :: (a, b, c, d, e) -> IO (Ptr (a, b, c, d, e))
+    make (a, b, c, d, e) = castPtr <$> make (P5 a b c d e)
+    {-# INLINE make #-}
+
+    load :: Ptr (a, b, c, d, e) -> IO (a, b, c, d, e)
+    load ptr = do
+      P5 a b c d e <- load (castPtr ptr)
+      pure (a, b, c, d, e)
+    {-# INLINE load #-}
+
+    store :: Ptr (a, b, c, d, e) -> (a, b, c, d, e) -> IO ()
+    store ptr (a, b, c, d, e) = store (castPtr ptr) (P5 a b c d e)
+    {-# INLINE store #-}
+
 
 --------------------------------------------------------------------------------
 -- Helper Types
@@ -650,3 +739,19 @@ instance (Val a, Val b) => Val ('Sum a b) where
   val :: Proxy ('Sum a b) -> Int
   val _ = val (Proxy @a) + val (Proxy @b)
   {-# INLINE val #-}
+
+data P2 a b = P2 a b
+  deriving (Generic)
+  deriving (Pointable) via (WithPointable (P2 a b))
+
+data P3 a b c = P3 a b c
+  deriving (Generic)
+  deriving (Pointable) via (WithPointable (P3 a b c))
+
+data P4 a b c d = P4 a b c d
+  deriving (Generic)
+  deriving (Pointable) via (WithPointable (P4 a b c d))
+
+data P5 a b c d e = P5 a b c d e
+  deriving (Generic)
+  deriving (Pointable) via (WithPointable (P5 a b c d e))
