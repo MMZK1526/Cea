@@ -7,17 +7,13 @@ import           Foreign.Ptr
 import           Foreign.Storable
 import           GHC.Generics
 
-data Int8Tuple = Int8Tuple Int8 Int8
+data Tuple a b = Tuple a b
   deriving stock (Eq, Ord, Show, Generic)
-  deriving Cea.Pointable via Cea.WithPointable Int8Tuple
+  deriving Cea.Pointable via Cea.WithPointable (Tuple a b)
 
-data TupleOfInt8Tuples = TupleOfInt8Tuples Int8Tuple Int8Tuple
-  deriving stock (Eq, Ord, Show, Generic)
-  deriving Cea.Pointable via Cea.WithPointable TupleOfInt8Tuples
-
-data PtrTuple = PtrTuple (Ptr ()) (Ptr ())
-  deriving stock (Eq, Ord, Show, Generic)
-  deriving Cea.Pointable via Cea.WithPointable PtrTuple
+type Int8Tuple = Tuple Int8 Int8
+type TupleOfInt8Tuples = Tuple Int8Tuple Int8Tuple
+type PtrTuple = Tuple (Ptr ()) (Ptr ())
 
 demoPrimitive :: IO ()
 demoPrimitive = do
@@ -44,9 +40,9 @@ demoPrimitive = do
 demoNestedTuples :: IO ()
 demoNestedTuples = do
   putStrLn "Demo Nested Tuples:\n"
-  let int8Tuple1 = Int8Tuple 1 2
-      int8Tuple2 = Int8Tuple 3 4
-      tupleOfInt8Tuples = TupleOfInt8Tuples int8Tuple1 int8Tuple2
+  let int8Tuple1 = Tuple 1 2 :: Int8Tuple
+      int8Tuple2 = Tuple 3 4 :: Int8Tuple
+      tupleOfInt8Tuples = Tuple int8Tuple1 int8Tuple2
   putStrLn $ "-- Storing " ++ show tupleOfInt8Tuples
   -- Create a pointer that stores this nested tuple.
   -- Since the fields of "TupleOfInt8Tuples" are "Int8Tuple"s and this is a
@@ -60,14 +56,14 @@ demoNestedTuples = do
   print val
   -- If we cast the pointer to "PtrTuple", since the fields are pointers,
   -- we would see the address of the "Int8Tuple"s rather some representation of
-  --  their values.
+  -- their values.
   let ptr' = castPtr ptr :: Ptr PtrTuple
   putStrLn $ "-- Loading the content of " ++ show ptr' ++ " as 'PtrTuple'"
   val' <- Cea.load ptr'
   print val'
   -- Use accessor to modify each field of the nested tuple.
   putStrLn $ "-- Modifying the content of " ++ show ptr
-  Cea.storeAt @0 ptr $ Int8Tuple 11 45
+  Cea.storeAt @0 ptr $ Tuple 11 45
   Cea.storesAt @'[1, 0] ptr 14
   putStrLn $ "-- Loading the content of " ++ show ptr
   val2 <- Cea.load ptr
@@ -102,9 +98,9 @@ fibCea n = do
 
 main :: IO ()
 main = do
-  let n = 10000
-  defaultMain
-    [ bench "fib" $ whnf fib n
-    , bench "fibCea" $ whnfAppIO fibCea n ]
-  -- demoPrimitive >> putStrLn ""
-  -- demoNestedTuples >> putStrLn ""
+  -- let n = 10000
+  -- defaultMain
+  --   [ bench "fib" $ whnf fib n
+  --   , bench "fibCea" $ whnfAppIO fibCea n ]
+  demoPrimitive >> putStrLn ""
+  demoNestedTuples >> putStrLn ""

@@ -650,7 +650,3 @@ instance (Val a, Val b) => Val ('Sum a b) where
   val :: Proxy ('Sum a b) -> Int
   val _ = val (Proxy @a) + val (Proxy @b)
   {-# INLINE val #-}
-
-data Tuple2 a b = Tuple2 a b
-  deriving (Generic)
-  deriving Pointable via WithPointable (Tuple2 a b)
