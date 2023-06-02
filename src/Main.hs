@@ -69,6 +69,31 @@ demoNestedTuples = do
   val2 <- Cea.load ptr
   print val2
 
+demoBuiltinTuples :: IO ()
+demoBuiltinTuples = do
+  putStrLn "Demo Builtin Tuples:\n"
+  let tuple = ((1, 2), (3, 4)) :: ((Int8, Int8), (Int8, Int8))
+  putStrLn $ "-- Storing " ++ show tuple
+  ptr <- Cea.make tuple
+  putStrLn $ "The address is " ++ show ptr ++ ", which may change at each run"
+  putStrLn $ "-- Loading the content of " ++ show ptr
+  val <- Cea.load ptr -- val == tuple
+  print val
+  -- Built-in tuples are treated as primitives, thus the elements are stored in
+  -- a contiguous memory block. If we "flatten" the content into a quad-tuple,
+  -- we would still see the same numbers.
+  let ptr' = castPtr ptr :: Ptr (Int8, Int8, Int8, Int8)
+  putStrLn $ "-- Loading the content of " ++ show ptr' ++ " as 'Ptr (Int8, Int8, Int8, Int8)'"
+  val' <- Cea.load ptr'
+  print val'
+  -- Use accessor to modify each field of the nested tuple.
+  putStrLn $ "-- Modifying the content of " ++ show ptr
+  Cea.storeAt @0 ptr (11, 45)
+  Cea.storesAt @'[1, 0] ptr 14
+  putStrLn $ "-- Loading the content of " ++ show ptr
+  val2 <- Cea.load ptr
+  print val2
+
 data IntTuple = IntTuple Int Int
   deriving stock (Eq, Ord, Show, Generic)
   deriving Cea.Pointable via Cea.WithPointable IntTuple
@@ -87,20 +112,21 @@ fibCea :: Int -> IO Int
 fibCea 0 = pure 0
 fibCea 1 = pure 1
 fibCea n = do
-  ptr  <- Cea.make $ IntTuple 0 1
+  ptr  <- Cea.make $ Tuple 0 1
   replicateM_ (n - 2) $ do
     a <- Cea.loadAt @0 ptr
     b <- Cea.loadAt @1 ptr
     Cea.storeAt @0 ptr b
     Cea.storeAt @1 ptr (a + b)
-  IntTuple a b <- Cea.load ptr
+  Tuple a b <- Cea.load ptr
   pure $ a + b
 
 main :: IO ()
 main = do
-  -- let n = 10000
-  -- defaultMain
-  --   [ bench "fib" $ whnf fib n
-  --   , bench "fibCea" $ whnfAppIO fibCea n ]
-  demoPrimitive >> putStrLn ""
-  demoNestedTuples >> putStrLn ""
+  let n = 10000
+  defaultMain
+    [ bench "fib" $ whnf fib n
+    , bench "fibCea" $ whnfAppIO fibCea n ]
+  -- demoPrimitive >> putStrLn ""
+  -- demoNestedTuples >> putStrLn ""
+  -- demoBuiltinTuples >> putStrLn ""
