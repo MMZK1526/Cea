@@ -14,6 +14,7 @@ module Cea.Pointer.Accessor
   ) where
 
 import           Cea.Pointer
+import           Data.Kind
 import           Data.Proxy
 import           Foreign.Ptr
 import           Foreign.Storable
@@ -122,6 +123,7 @@ instance (Pointable a, GAccessible ix (Rep a)) => Accessible ix a where
 
 class GAccessible (ix :: Nat) a where
   type GAccessor ix a
+
   gAccess :: Proxy ix -> Ptr (a p) -> IO (Ptr (GAccessor ix a))
 
 instance (GPointable (K1 i a), ConstAccess f (K1 i a), Rep a ~ x, IsPrim a ~ f)
@@ -139,9 +141,10 @@ instance (GAccessible ix a) => GAccessible ix (M1 i c a) where
   gAccess ix p = gAccess ix (castPtr p :: Ptr (a p))
   {-# INLINE gAccess #-}
 
-instance (ProductAccess f ix (a :*: b), IsZero ix ~ f)
+instance (ProductAccess f ix (a :*: b), LessThan ix (GLength a) ~ f, GHasLength a)
   => GAccessible ix (a :*: b) where
-    type GAccessor ix (a :*: b) = ProductAccessor (IsZero ix) ix (a :*: b)
+    type GAccessor ix (a :*: b) =
+      ProductAccessor (LessThan ix (GLength a)) ix (a :*: b)
 
     gAccess :: Proxy ix -> Ptr ((a :*: b) p)
             -> IO (Ptr (GAccessor ix (a :*: b)))
@@ -172,8 +175,32 @@ instance (Accessible ix a, Accessibles ixs (Accessor ix a))
 
 
 --------------------------------------------------------------------------------
+-- GHasLength
+--------------------------------------------------------------------------------
+
+class GHasLength (a :: Type -> Type) where
+  type GLength a :: Nat
+
+instance GHasLength (K1 i a) where
+  type GLength (K1 i a) = 1
+
+instance GHasLength a => GHasLength (M1 i c a) where
+  type GLength (M1 i c a) = GLength a
+
+instance (GHasLength a, GHasLength b) => GHasLength (a :*: b) where
+  type GLength (a :*: b) = GLength a + GLength b
+
+
+--------------------------------------------------------------------------------
 -- Helper Types
 --------------------------------------------------------------------------------
+
+type family LessThan (n :: Nat) (n' :: Nat) :: Bool where 
+  LessThan n n' = IsLessThan (CmpNat n n')
+
+type family IsLessThan (o :: Ordering) :: Bool where
+  IsLessThan 'LT = 'True
+  IsLessThan _   = 'False
 
 type family IsZero (n :: Nat) :: Bool where
   IsZero 0 = 'True
@@ -204,20 +231,20 @@ class ProductAccess (f :: Bool) (ix :: Nat) a where
   productAccess :: Proxy f -> Proxy ix -> Ptr (a p)
                 -> IO (Ptr (ProductAccessor f ix a))
 
-instance (GAccessible 0 a) => ProductAccess 'True 0 (a :*: b) where
-  type ProductAccessor 'True 0 (a :*: b) = GAccessor 0 a
+instance (GAccessible ix a) => ProductAccess 'True ix (a :*: b) where
+  type ProductAccessor 'True ix (a :*: b) = GAccessor ix a
 
-  productAccess :: Proxy 'True -> Proxy 0 -> Ptr ((a :*: b) p) 
-                -> IO (Ptr (ProductAccessor 'True 0 (a :*: b)))
+  productAccess :: Proxy 'True -> Proxy ix -> Ptr ((a :*: b) p) 
+                -> IO (Ptr (ProductAccessor 'True ix (a :*: b)))
   productAccess _ ix p = gAccess ix (castPtr p :: Ptr (a p))
   {-# INLINE productAccess #-}
 
 instance ( GAccessible ix b
          , KnownNat (ToNat (SLSize f a))
-         , ix ~ ix' - 1, GIsPrim a ~ f
+         , ix ~ ix' - GLength a, GIsPrim a ~ f
          , MkSpace f a )
   => ProductAccess 'False ix' (a :*: b) where
-    type ProductAccessor 'False ix' (a :*: b) = GAccessor (ix' - 1) b
+    type ProductAccessor 'False ix' (a :*: b) = GAccessor (ix' - GLength a) b
 
     productAccess :: Proxy 'False -> Proxy ix' -> Ptr ((a :*: b) p)
                   -> IO (Ptr (ProductAccessor 'False ix' (a :*: b)))
