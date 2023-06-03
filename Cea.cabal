@@ -18,6 +18,25 @@ executable cea
         Cea.Pointer,
         Cea.Pointer.Accessor,
         Cea.Pointer.Unsafe
+    default-extensions:
+        BlockArguments,
+        DataKinds,
+        DefaultSignatures,
+        DeriveAnyClass,
+        DeriveGeneric,
+        DerivingVia,
+        FlexibleContexts,
+        FlexibleInstances,
+        FunctionalDependencies,
+        InstanceSigs,
+        KindSignatures,
+        GeneralizedNewtypeDeriving,
+        RankNTypes,
+        ScopedTypeVariables,
+        TypeApplications,
+        TypeFamilies,
+        TypeOperators,
+        UndecidableInstances
     build-depends:
         Cea,
         base,
