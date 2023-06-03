@@ -37,7 +37,8 @@ access = access_ (Proxy :: Proxy ix)
 -- > do
 -- >   ptr <- make ((), 'a')
 -- >   loadAt @1 ptr -- 'a'
-loadAt :: forall ix a. (Pointable a, Accessible ix a, Pointable (Accessor ix a)) => Ptr a -> IO (Accessor ix a)
+loadAt :: forall ix a. (Pointable a, Accessible ix a, Pointable (Accessor ix a))
+       => Ptr a -> IO (Accessor ix a)
 loadAt ptr = do
   ptr' <- access @ix ptr
   load ptr'
@@ -49,7 +50,9 @@ loadAt ptr = do
 -- >   ptr <- make ((), 'a')
 -- >   storeAt @1 ptr 'b'
 -- >   loadAt @1 ptr -- 'b'
-storeAt :: forall ix a. (Pointable a, Accessible ix a, Pointable (Accessor ix a)) => Ptr a -> Accessor ix a -> IO ()
+storeAt :: forall ix a
+         . (Pointable a, Accessible ix a, Pointable (Accessor ix a))
+        => Ptr a -> Accessor ix a -> IO ()
 storeAt ptr val = do
   ptr' <- access @ix ptr
   store ptr' val
@@ -62,7 +65,8 @@ storeAt ptr val = do
 -- >   ptr  <- make (((), 'a'), 2 :: Int)
 -- >   ptr' <- accesses @'[0, 1] ptr -- ptr' :: Ptr Char
 -- >   load ptr' -- 'a'
-accesses :: forall ixs a. (Pointable a, Accessibles ixs a) => Ptr a -> IO (Ptr (Accessors ixs a))
+accesses :: forall ixs a. (Pointable a, Accessibles ixs a)
+         => Ptr a -> IO (Ptr (Accessors ixs a))
 accesses = accesses_ (Proxy :: Proxy ixs)
 {-# INLINE accesses #-}
 
@@ -72,7 +76,9 @@ accesses = accesses_ (Proxy :: Proxy ixs)
 -- > do
 -- >   ptr <- make (((), 'a'), 2 :: Int)
 -- >   loadsAt @'[0, 1] ptr -- 'a'
-loadsAt :: forall ixs a. (Pointable a, Accessibles ixs a, Pointable (Accessors ixs a)) => Ptr a -> IO (Accessors ixs a)
+loadsAt :: forall ixs a
+         . (Pointable a, Accessibles ixs a, Pointable (Accessors ixs a))
+        => Ptr a -> IO (Accessors ixs a)
 loadsAt ptr = do
   ptr' <- accesses @ixs ptr
   load ptr'
@@ -85,7 +91,9 @@ loadsAt ptr = do
 -- >   ptr <- make (((), 'a'), 2 :: Int)
 -- >   storesAt @'[0, 1] ptr 'b'
 -- >   loadsAt @'[0, 1] ptr -- 'b'
-storesAt :: forall ixs a. (Pointable a, Accessibles ixs a, Pointable (Accessors ixs a)) => Ptr a -> Accessors ixs a -> IO ()
+storesAt :: forall ixs a
+          . (Pointable a, Accessibles ixs a, Pointable (Accessors ixs a))
+         => Ptr a -> Accessors ixs a -> IO ()
 storesAt ptr val = do
   ptr' <- accesses @ixs ptr
   store ptr' val
@@ -141,7 +149,8 @@ instance (GAccessible ix a) => GAccessible ix (M1 i c a) where
   gAccess ix p = gAccess ix (castPtr p :: Ptr (a p))
   {-# INLINE gAccess #-}
 
-instance (ProductAccess f ix (a :*: b), LessThan ix (GLength a) ~ f, GHasLength a)
+instance ( ProductAccess f ix (a :*: b)
+         , LessThan ix (GLength a) ~ f, GHasLength a )
   => GAccessible ix (a :*: b) where
     type GAccessor ix (a :*: b) =
       ProductAccessor (LessThan ix (GLength a)) ix (a :*: b)
@@ -195,7 +204,7 @@ instance (GHasLength a, GHasLength b) => GHasLength (a :*: b) where
 -- Helper Types
 --------------------------------------------------------------------------------
 
-type family LessThan (n :: Nat) (n' :: Nat) :: Bool where 
+type family LessThan (n :: Nat) (n' :: Nat) :: Bool where
   LessThan n n' = IsLessThan (CmpNat n n')
 
 type family IsLessThan (o :: Ordering) :: Bool where
@@ -234,7 +243,7 @@ class ProductAccess (f :: Bool) (ix :: Nat) a where
 instance (GAccessible ix a) => ProductAccess 'True ix (a :*: b) where
   type ProductAccessor 'True ix (a :*: b) = GAccessor ix a
 
-  productAccess :: Proxy 'True -> Proxy ix -> Ptr ((a :*: b) p) 
+  productAccess :: Proxy 'True -> Proxy ix -> Ptr ((a :*: b) p)
                 -> IO (Ptr (ProductAccessor 'True ix (a :*: b)))
   productAccess _ ix p = gAccess ix (castPtr p :: Ptr (a p))
   {-# INLINE productAccess #-}
@@ -248,6 +257,6 @@ instance ( GAccessible ix b
 
     productAccess :: Proxy 'False -> Proxy ix' -> Ptr ((a :*: b) p)
                   -> IO (Ptr (ProductAccessor 'False ix' (a :*: b)))
-    productAccess _ ix p = gAccess (Proxy :: Proxy ix) 
+    productAccess _ ix p = gAccess (Proxy :: Proxy ix)
       ((castPtr p `plusPtr` slSize (Proxy @f) (Proxy @a)) :: Ptr (b p))
     {-# INLINE productAccess #-}

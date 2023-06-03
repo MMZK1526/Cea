@@ -707,12 +707,12 @@ type family FromNat (n :: Nat) :: MyNat where
   FromNat n = 'Succ (FromNat (n - 1))
 
 type family ToNat (n :: MyNat) :: Nat where
-  ToNat 'Zero = 0
-  ToNat ('Succ n) = 1 + ToNat n
-  ToNat ('TypeNat t) = ToNat (SizeOf t)
-  ToNat ('Si 'True a b) = ToNat a
+  ToNat 'Zero            = 0
+  ToNat ('Succ n)        = 1 + ToNat n
+  ToNat ('TypeNat t)     = ToNat (SizeOf t)
+  ToNat ('Si 'True a b)  = ToNat a
   ToNat ('Si 'False a b) = ToNat b
-  ToNat ('Sum a b) = ToNat a + ToNat b
+  ToNat ('Sum a b)       = ToNat a + ToNat b
 
 class KnownBool (b :: Bool) where
   boolVal :: Proxy b -> Bool
