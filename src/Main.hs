@@ -4,7 +4,6 @@ import           Control.Monad
 import           Criterion.Main
 import           Data.Int
 import           Foreign.Ptr
-import           Foreign.Storable
 import           GHC.Generics
 
 data Tuple a b = Tuple a b

@@ -250,7 +250,6 @@ instance Pointable IntPtr where
 
 -- We want to know the size of "Ptr" at compile time, so we will always assume
 -- it takes eight bytes.
-
 instance Pointable (Ptr a) where
   type SizeOf (Ptr a) = FromNat PtrSize
 
@@ -338,6 +337,23 @@ instance Pointable Double where
   store = poke
   {-# INLINE store #-}
 
+instance Pointable Bool where
+  type SizeOf Bool = FromNat 1
+
+  type IsPrim Bool = 'True
+
+  make :: Bool -> IO (Ptr Bool)
+  make True  = castPtr <$> new @Word8 1
+  make False = castPtr <$> new @Word8 0
+  {-# INLINE make #-}
+
+  load :: Ptr Bool -> IO Bool
+  load = fmap (/= 0) . peek @Word8 . castPtr
+  {-# INLINE load #-}
+
+  store :: Ptr Bool -> Bool -> IO ()
+  store ptr b = poke (castPtr ptr) (if b then 1 else 0 :: Word8)
+  {-# INLINE store #-}
 
 -- The difference between a tuple and a custom record is that a tuple is always
 -- treated as a primitive type, hence when a tuple is used as a field in a
