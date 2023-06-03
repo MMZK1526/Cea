@@ -457,9 +457,6 @@ instance ( Generic a
          , GPointable (Rep a)
          , KnownBool (GIsPrim (Rep a)) )
   => Pointable (WithPointable a) where
-    -- Note that @GSizeOf@ does not build @Nat@ kinds, and we convert it via
-    -- @ToNat@. This is because GHC's evaluation strategy may not converge for
-    -- self-referencing types.
     type SizeOf (WithPointable a) = GSizeOf (Rep a)
 
     type IsPrim (WithPointable a) = GIsPrim (Rep a)
