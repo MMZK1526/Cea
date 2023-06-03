@@ -80,7 +80,7 @@ demoBuiltinTuples = do
   val <- load ptr -- val == tuple
   print val
   -- Built-in tuples are treated as primitives, thus the elements are stored in
-  -- a contiguous memory block. If we "flatten" the content into a quad-tuple,
+  -- a contiguous memory block. If we "flatten" the content into a quadruple,
   -- we would still see the same numbers.
   let ptr' = castPtr ptr :: Ptr (Int8, Int8, Int8, Int8)
   putStrLn $ "-- Loading the content of " ++ show ptr' ++ " as 'Ptr (Int8, Int8, Int8, Int8)'"
@@ -125,10 +125,10 @@ fibCea n = do
 
 main :: IO ()
 main = do
-  -- let n = 10000
-  -- defaultMain
-  --   [ bench "fib" $ whnf fib n
-  --   , bench "fibCea" $ whnfAppIO fibCea n ]
-  demoPrimitive >> putStrLn ""
-  demoNestedTuples >> putStrLn ""
-  demoBuiltinTuples >> putStrLn ""
+  let n = 10000
+  defaultMain
+    [ bench "fib" $ whnf fib n
+    , bench "fibCea" $ whnfAppIO fibCea n ]
+  -- demoPrimitive >> putStrLn ""
+  -- demoNestedTuples >> putStrLn ""
+  -- demoBuiltinTuples >> putStrLn ""

@@ -107,7 +107,7 @@ instance Pointable Int32 where
   {-# INLINE store #-}
 
 instance Pointable Int64 where
-  type SizeOf Int64 = FromNat 8
+  type SizeOf Int64 = FromNat PtrSize
 
   type IsPrim Int64 = 'True
 
@@ -175,7 +175,7 @@ instance Pointable Word32 where
   {-# INLINE store #-}
 
 instance Pointable Word64 where
-  type SizeOf Word64 = FromNat 8
+  type SizeOf Word64 = FromNat PtrSize
 
   type IsPrim Word64 = 'True
 
@@ -194,7 +194,7 @@ instance Pointable Word64 where
 -- We want to know the size of "Int" at compile time, so we will always assume
 -- it takes eight bytes.
 instance Pointable Int where
-  type SizeOf Int = FromNat 8
+  type SizeOf Int = FromNat PtrSize
 
   type IsPrim Int = 'True
 
@@ -213,7 +213,7 @@ instance Pointable Int where
 -- We want to know the size of "Word" at compile time, so we will always assume
 -- it takes eight bytes.
 instance Pointable Word where
-  type SizeOf Word = FromNat 8
+  type SizeOf Word = FromNat PtrSize
 
   type IsPrim Word = 'True
 
@@ -232,7 +232,7 @@ instance Pointable Word where
 -- We want to know the size of "IntPtr" at compile time, so we will always
 -- assume it takes eight bytes.
 instance Pointable IntPtr where
-  type SizeOf IntPtr = FromNat 8
+  type SizeOf IntPtr = FromNat PtrSize
 
   type IsPrim IntPtr = 'True
 
@@ -252,7 +252,7 @@ instance Pointable IntPtr where
 -- it takes eight bytes.
 
 instance Pointable (Ptr a) where
-  type SizeOf (Ptr a) = FromNat 8
+  type SizeOf (Ptr a) = FromNat PtrSize
 
   type IsPrim (Ptr a) = 'True
 
@@ -322,7 +322,7 @@ instance Pointable Float where
   {-# INLINE store #-}
 
 instance Pointable Double where
-  type SizeOf Double = FromNat 8
+  type SizeOf Double = FromNat PtrSize
 
   type IsPrim Double = 'True
 
@@ -568,7 +568,7 @@ instance ( Val (GSizeOf (K1 i a))
          , Pointable a
          , IsPrim a ~ f )
   => GPointable (K1 i a) where
-    type GSizeOf (K1 i a) = 'Si (IsPrim a) ('TypeNat a) (FromNat 8)
+    type GSizeOf (K1 i a) = 'Si (IsPrim a) ('TypeNat a) (FromNat PtrSize)
 
     type GIsPrim (K1 i a) = IsPrim a
 
@@ -577,7 +577,7 @@ instance ( Val (GSizeOf (K1 i a))
       then fmap castPtr . make $ unK1 a
       else do 
         ptr  <- make (unK1 a)
-        ptr' <- mallocBytes 8
+        ptr' <- mallocBytes ptrSize
         poke ptr' ptr
         pure $ castPtr ptr'
     {-# INLINE gMake #-}
@@ -612,13 +612,15 @@ instance ( Val (GSizeOf (a :*: b))
   => GPointable (a :*: b) where
     type GSizeOf (a :*: b) = Sum (GSizeOf a) (GSizeOf b)
 
+    -- The product type itself is primitive regardless of the fields. The
+    -- "indirection" will come from the data meta @M1 D@.
     type GIsPrim (a :*: b) = 'True
 
     gMake :: (a :*: b) p -> IO (Ptr ((a :*: b) p))
     gMake a = do
       ptr <- mallocBytes $ gSize a
       mkSpace (castPtr ptr) (Proxy @f) (Proxy @a)
-      mkSpace (castPtr ptr `plusPtr` 8) (Proxy @g) (Proxy @b)
+      mkSpace (castPtr ptr `plusPtr` ptrSize) (Proxy @g) (Proxy @b)
       gStore ptr a
       pure ptr
     {-# INLINE gMake #-}
@@ -648,7 +650,7 @@ class Val (SLSize f a) => MkSpace (f :: Bool) (a :: * -> *) where
   mkSpace :: Ptr (a p) -> Proxy f -> Proxy a -> IO ()
 
 instance (Val (GSizeOf a), KnownBool f) => MkSpace f a where
-  type SLSize f a = Si f (GSizeOf a) (FromNat 8)
+  type SLSize f a = Si f (GSizeOf a) (FromNat PtrSize)
 
   mkSpace :: Ptr (a p) -> Proxy f -> Proxy a -> IO ()
   mkSpace ptr _ _ = if boolVal (Proxy @f)
@@ -713,6 +715,10 @@ instance KnownBool 'False where
   boolVal _ = False
   {-# INLINE boolVal #-}
 
+-- | A class with a method that computes the term-level size of a @MyNat@.
+--
+-- It basically does the job of @natVal@, but for @MyNat@. It is used here
+-- because the derivation of @KnownNat@ is very limited by GHC.
 class Val (n :: MyNat) where
   val :: Proxy n -> Int
 
@@ -741,18 +747,28 @@ instance (Val a, Val b) => Val ('Sum a b) where
   val _ = val (Proxy @a) + val (Proxy @b)
   {-# INLINE val #-}
 
+-- | Helper type for the @Pointable@ derivation for tuples.
 data P2 a b = P2 a b
   deriving (Generic)
   deriving (Pointable) via (WithPointable (P2 a b))
 
+-- | Helper type for the @Pointable@ derivation for triples.
 data P3 a b c = P3 a b c
   deriving (Generic)
   deriving (Pointable) via (WithPointable (P3 a b c))
 
+-- | Helper type for the @Pointable@ derivation for quadruples.
 data P4 a b c d = P4 a b c d
   deriving (Generic)
   deriving (Pointable) via (WithPointable (P4 a b c d))
 
+-- | Helper type for the @Pointable@ derivation for quintuples.
 data P5 a b c d e = P5 a b c d e
   deriving (Generic)
   deriving (Pointable) via (WithPointable (P5 a b c d e))
+
+type PtrSize = 8
+
+ptrSize :: Int
+ptrSize = val (Proxy @(FromNat PtrSize))
+{-# INLINE ptrSize #-}
