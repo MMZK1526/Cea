@@ -1,3 +1,9 @@
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DerivingVia #-}
+{-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE UndecidableInstances #-}
+
 import           Cea.Pointer
 import           Cea.Pointer.Accessor
 import           Control.Monad
@@ -113,7 +119,7 @@ fibCea :: Int -> IO Int
 fibCea 0 = pure 0
 fibCea 1 = pure 1
 fibCea n = do
-  ptr  <- make $ Tuple 0 1
+  ptr       <- make $ Tuple 0 1
   replicateM_ (n - 2) $ do
     a <- loadAt @0 ptr
     b <- loadAt @1 ptr
