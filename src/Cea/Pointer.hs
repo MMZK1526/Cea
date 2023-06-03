@@ -470,8 +470,7 @@ instance ( Generic a
     load :: Ptr (WithPointable a) -> IO (WithPointable a)
     load ptr = do
       let ptr' = castPtr ptr :: Ptr (Rep a p)
-      d <- gLoad ptr'
-      pure $ WithPointable $ to d
+      WithPointable . to <$> gLoad ptr'
     {-# INLINE load #-}
 
     store :: Ptr (WithPointable a) -> WithPointable a -> IO ()
