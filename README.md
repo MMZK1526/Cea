@@ -1,6 +1,14 @@
 # Cea
 
-TODO: Introduction
+One of the core features of Haskell is immutability. It has greatly simplified the reasoning of Haskell programs, and together with the type system it can capture many bugs before they happen. However, immutability introduces overhead, and while the overhead is sometimes neglibible thanks to the various means of optimisations, there are situations where we want to avoid it.
+
+In Haskell, a common way of achieving mutability is to use `IORef`s. However, `IORef`s are notoriously slow. In fact, they are often slower than pure `StateT`s.
+
+A second way relies on Haskell's Foreign Function Interface (FFI), where we can have access to C pointers. Many common Haskell libraries use these pointers under the hood. However, working with raw, untyped pointers are error-prone, and it is easy to introduce memory leaks and segfaults. While Haskell has a `Storable` type class that offers basic types of pointers, it is only implemented for the basic types, and one have to write much boilerplate if they want to use custom data types.
+
+The library `cea` is an attempt to provide a safe, high-level interface to C pointers. It can derive `Pointable` instances for most custom data types, and provides a variety of accessor functions that allows one to modify a certain field of a data structure without reading the whole data structure. All the type guarantees are checked at compile time, introducing minimum overhead over raw pointers.
+
+Currently, it is still a prototype that can only handle non-recursive product types, but in the future I will extend it to support sum types and arrays to make it more useful.
 
 ## Example
 TODO
