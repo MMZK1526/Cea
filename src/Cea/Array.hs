@@ -3,6 +3,7 @@ module Cea.Array where
 import           Control.Monad
 import           Cea.Pointer
 import           Data.Array
+import           Data.Array.IO
 import           Data.Foldable
 import           Data.Proxy
 import           Foreign.Marshal
@@ -40,6 +41,30 @@ makeArrFromList xs = do
   zipWithM_ store (map (arr `plusPtr`) [0, elemSize..]) xs'
   pure ptr
 
+loadArr :: forall e p
+         . ( ArrayLen (Ptr (ArrayOf p e))
+           , Pointable e )
+        => Ptr (ArrayOf p e) -> IO (Array Int e)
+loadArr ptr = do
+  len <- arrLen ptr
+  let elemSize = fromIntegral $ val (Proxy @(SizeOf e))
+  arrIO <- newArray_ (0, len - 1) :: IO (IOArray Int e)
+  let arr = ptr `plusPtr` ptrSize
+  forM_ [0..(len - 1)] $ \ix -> do
+    val <- load (arr `plusPtr` (ix * elemSize))
+    writeArray arrIO ix val
+  freeze arrIO
+
+loadArrToList :: forall e p
+               . ( ArrayLen (Ptr (ArrayOf p e))
+                 , Pointable e )
+              => Ptr (ArrayOf p e) -> IO [e]
+loadArrToList ptr = do
+  len <- arrLen ptr
+  let elemSize = fromIntegral $ val (Proxy @(SizeOf e))
+  let arr = ptr `plusPtr` ptrSize
+  forM [0..(len - 1)] $ \ix -> load (arr `plusPtr` (ix * elemSize))
+
 eraseLen :: Ptr (ArrayOf ('Just n) a) -> Ptr (ArrayOf 'Nothing a)
 eraseLen = castPtr
 {-# INLINE eraseLen #-}
@@ -48,9 +73,9 @@ class ArrayLen a where
   arrLen :: a -> IO Int
 
 class ArrayLen a => ArrayPointable n a e | n a -> e where
-  loadArr :: n -> a -> IO e
+  readArr :: n -> a -> IO e
 
-  storeArr :: n -> a -> e -> IO ()
+  writeArr :: n -> a -> e -> IO ()
 
 instance KnownNat n => ArrayLen (Ptr (ArrayOf ('Just n) e)) where
   arrLen :: Ptr (ArrayOf ('Just n) e) -> IO Int
@@ -64,87 +89,87 @@ instance ArrayLen (Ptr (ArrayOf 'Nothing e)) where
 
 instance (KnownNat n, Pointable e)
   => ArrayPointable Int (Ptr (ArrayOf ('Just n) e)) e where
-    loadArr :: Int -> Ptr (ArrayOf ('Just n) e) -> IO e
-    loadArr = loadArrInt
-    {-# INLINE loadArr #-}
+    readArr :: Int -> Ptr (ArrayOf ('Just n) e) -> IO e
+    readArr = readArrInt
+    {-# INLINE readArr #-}
 
-    storeArr :: Int -> Ptr (ArrayOf ('Just n) e) -> e -> IO ()
-    storeArr = storeArrInt
-    {-# INLINE storeArr #-}
+    writeArr :: Int -> Ptr (ArrayOf ('Just n) e) -> e -> IO ()
+    writeArr = writeArrInt
+    {-# INLINE writeArr #-}
 
 instance Pointable e => ArrayPointable Int (Ptr (ArrayOf 'Nothing e)) e where
-  loadArr :: Int -> Ptr (ArrayOf 'Nothing e) -> IO e
-  loadArr = loadArrInt
-  {-# INLINE loadArr #-}
+  readArr :: Int -> Ptr (ArrayOf 'Nothing e) -> IO e
+  readArr = readArrInt
+  {-# INLINE readArr #-}
 
-  storeArr :: Int -> Ptr (ArrayOf 'Nothing e) -> e -> IO ()
-  storeArr = storeArrInt
-  {-# INLINE storeArr #-}
+  writeArr :: Int -> Ptr (ArrayOf 'Nothing e) -> e -> IO ()
+  writeArr = writeArrInt
+  {-# INLINE writeArr #-}
 
 instance (KnownNat n, KnownNat n', Pointable e, CmpNat n n' ~ 'LT)
   => ArrayPointable (Proxy n) (Ptr (ArrayOf (Just n') e)) e where
-    loadArr :: Proxy n -> Ptr (ArrayOf (Just n') e) -> IO e
-    loadArr _ ptr = do
+    readArr :: Proxy n -> Ptr (ArrayOf (Just n') e) -> IO e
+    readArr _ ptr = do
       len <- arrLen ptr
       let ix = fromIntegral $ natVal (Proxy @n)
       let elemSize = fromIntegral $ val (Proxy @(SizeOf e))
-      load (ptr `plusPtr` (ix * elemSize))
-    {-# INLINE loadArr #-}
+      load (ptr `plusPtr` ptrSize `plusPtr` (ix * elemSize))
+    {-# INLINE readArr #-}
 
-    storeArr :: Proxy n -> Ptr (ArrayOf (Just n') e) -> e -> IO ()
-    storeArr _ ptr e = do
+    writeArr :: Proxy n -> Ptr (ArrayOf (Just n') e) -> e -> IO ()
+    writeArr _ ptr e = do
       len <- arrLen ptr
       let ix = fromIntegral $ natVal (Proxy @n)
       let elemSize = fromIntegral $ val (Proxy @(SizeOf e))
-      store (ptr `plusPtr` (ix * elemSize)) e
-    {-# INLINE storeArr #-}
+      store (ptr `plusPtr` ptrSize `plusPtr` (ix * elemSize)) e
+    {-# INLINE writeArr #-}
 
 instance (KnownNat n, Pointable e)
   => ArrayPointable (Proxy n) (Ptr (ArrayOf 'Nothing e)) e where
-    loadArr :: Proxy n -> Ptr (ArrayOf 'Nothing e) -> IO e
-    loadArr _ ptr = do
+    readArr :: Proxy n -> Ptr (ArrayOf 'Nothing e) -> IO e
+    readArr _ ptr = do
       len <- arrLen ptr
       let ix = fromIntegral $ natVal (Proxy @n)
       if ix >= len || ix < 0
-        then error "loadArr: Index out of bound"
+        then error "readArr: Index out of bound"
         else do
           let elemSize = fromIntegral $ val (Proxy @(SizeOf e))
-          load (ptr `plusPtr` (ix * elemSize))
-    {-# INLINE loadArr #-}
+          load (ptr `plusPtr` ptrSize `plusPtr` (ix * elemSize))
+    {-# INLINE readArr #-}
 
-    storeArr :: Proxy n -> Ptr (ArrayOf 'Nothing e) -> e -> IO ()
-    storeArr _ ptr e = do
+    writeArr :: Proxy n -> Ptr (ArrayOf 'Nothing e) -> e -> IO ()
+    writeArr _ ptr e = do
       len <- arrLen ptr
       let ix = fromIntegral $ natVal (Proxy @n)
       if ix >= len || ix < 0
-        then error "storeArr: Index out of bound"
+        then error "writeArr: Index out of bound"
         else do
           let elemSize = fromIntegral $ val (Proxy @(SizeOf e))
-          store (ptr `plusPtr` (ix * elemSize)) e
-    {-# INLINE storeArr #-}
+          store (ptr `plusPtr` ptrSize `plusPtr` (ix * elemSize)) e
+    {-# INLINE writeArr #-}
 
-loadArrInt :: forall e p
+readArrInt :: forall e p
            . ( ArrayLen (Ptr (ArrayOf p e))
              , Pointable e )
           => Int -> Ptr (ArrayOf p e) -> IO e
-loadArrInt ix ptr = do
+readArrInt ix ptr = do
   len <- arrLen ptr
   if ix >= len || ix < 0
-    then error "loadArr: Index out of bound"
+    then error "readArr: Index out of bound"
     else do
       let elemSize = fromIntegral $ val (Proxy @(SizeOf e))
-      load (ptr `plusPtr` (ix * elemSize))
-{-# INLINE loadArrInt #-}
+      load (ptr `plusPtr` ptrSize `plusPtr` (ix * elemSize))
+{-# INLINE readArrInt #-}
 
-storeArrInt :: forall e p
+writeArrInt :: forall e p
              . ( ArrayLen (Ptr (ArrayOf p e))
                , Pointable e )
             => Int -> Ptr (ArrayOf p e) -> e -> IO ()
-storeArrInt ix ptr e = do
+writeArrInt ix ptr e = do
   len <- arrLen ptr
   if ix >= len || ix < 0
-    then error "storeArr: Index out of bound"
+    then error "writeArr: Index out of bound"
     else do
       let elemSize = fromIntegral $ val (Proxy @(SizeOf e))
-      store (ptr `plusPtr` (ix * elemSize)) e
-{-# INLINE storeArrInt #-}
+      store (ptr `plusPtr` ptrSize `plusPtr` (ix * elemSize)) e
+{-# INLINE writeArrInt #-}
