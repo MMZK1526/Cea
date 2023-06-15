@@ -1,8 +1,10 @@
+import           Cea.Array
 import           Cea.Pointer
 import           Cea.Pointer.Accessor
 import           Control.Monad
 import           Criterion.Main
 import           Data.Int
+import           Data.Proxy
 import           Foreign.Ptr
 import           GHC.Generics
 
@@ -95,6 +97,27 @@ demoBuiltinTuples = do
   val2 <- load ptr'
   print val2
 
+demoArray :: IO ()
+demoArray = do
+  putStrLn "Demo Array:\n"
+  -- Making an Int array of size 7.
+  putStrLn "-- Making an Int array of size 7"
+  intArr <- makeArr @7 (0 :: Int)
+  putStrLn $ "The address is " ++ show intArr ++ ", which may change at each run"
+  -- Storing some values into the array.
+  putStrLn "-- Storing some values into the array"
+  writeArr (Proxy @0) intArr 1
+  writeArr (Proxy @1) intArr 2
+  writeArr (Proxy @2) intArr 3
+  writeArr (Proxy @3) intArr 4
+  writeArr (Proxy @4) intArr 5
+  writeArr (Proxy @5) intArr 6
+  writeArr (Proxy @6) intArr 7
+  -- Load the array into a list.
+  putStrLn "-- Load the array into a list"
+  xs <- loadArrToList intArr
+  putStrLn $ "The content of the array is " ++ show xs
+
 data IntTuple = IntTuple Int Int
   deriving stock (Eq, Ord, Show, Generic)
   deriving Pointable via WithPointable IntTuple
@@ -124,10 +147,11 @@ fibCea n = do
 
 main :: IO ()
 main = do
-  let n = 10000
-  defaultMain
-    [ bench "fib" $ whnf fib n
-    , bench "fibCea" $ whnfAppIO fibCea n ]
+  -- let n = 10000
+  -- defaultMain
+  --   [ bench "fib" $ whnf fib n
+  --   , bench "fibCea" $ whnfAppIO fibCea n ]
   -- demoPrimitive >> putStrLn ""
   -- demoNestedTuples >> putStrLn ""
   -- demoBuiltinTuples >> putStrLn ""
+  demoArray >> putStrLn ""
