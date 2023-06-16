@@ -10,6 +10,47 @@ author:             mmzk1526
 maintainer:         yc4120@ic.ac.uk
 extra-source-files: CHANGELOG.md
 
+
+-- test-suite cea-test
+--     ghc-options:
+--         -O0
+--     main-is: Spec.hs
+--     type:             exitcode-stdio-1.0
+--     other-modules:
+--         Cea.Array,
+--         Cea.Pointer,
+--         Cea.Pointer.Accessor,
+--         Cea.Pointer.Unsafe
+--     default-extensions:
+--         BlockArguments,
+--         DataKinds,
+--         DefaultSignatures,
+--         DeriveAnyClass,
+--         DeriveGeneric,
+--         DerivingVia,
+--         FlexibleContexts,
+--         FlexibleInstances,
+--         FunctionalDependencies,
+--         InstanceSigs,
+--         KindSignatures,
+--         GeneralizedNewtypeDeriving,
+--         RankNTypes,
+--         ScopedTypeVariables,
+--         TypeApplications,
+--         TypeFamilies,
+--         TypeOperators,
+--         UndecidableInstances
+--     build-depends:
+--         array ^>=0.5,
+--         base,
+--         hspec ^>=2.11,
+--         transformers ^>=0.6
+--     hs-source-dirs:
+--         src
+--         test
+--     default-language: Haskell2010
+
+
 executable cea
     ghc-options:
         -O2
@@ -40,12 +81,13 @@ executable cea
         UndecidableInstances
     build-depends:
         Cea,
-        array >=0.5,
+        array ^>=0.5,
         base,
         criterion,
-        transformers >=0.5
+        transformers ^>=0.6
     hs-source-dirs:   src
     default-language: Haskell2010
+
 
 library
     exposed-modules:
@@ -74,8 +116,8 @@ library
         TypeOperators,
         UndecidableInstances
     build-depends:
+        array ^>=0.5,
         base,
-        array >=0.5,
-        transformers >=0.5
+        transformers ^>=0.6
     hs-source-dirs:   src
     default-language: Haskell2010
