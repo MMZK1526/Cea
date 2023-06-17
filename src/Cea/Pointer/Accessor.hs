@@ -134,9 +134,9 @@ class GAccessible (ix :: Nat) a where
 
   gAccess :: Proxy ix -> Ptr (a p) -> IO (Ptr (GAccessor ix a))
 
-instance (GPointable (K1 i a), ConstAccess f (K1 i a), Rep a ~ x, IsPrim a ~ f)
+instance (GPointable (K1 i a), ConstAccess f (K1 i a), Rep a ~ x, IsDirect a ~ f)
   => GAccessible 0 (K1 i a) where
-    type GAccessor 0 (K1 i a) = ConstAccessor (IsPrim a) (K1 i a)
+    type GAccessor 0 (K1 i a) = ConstAccessor (IsDirect a) (K1 i a)
 
     gAccess :: Proxy 0 -> Ptr (K1 i a p) -> IO (Ptr (GAccessor 0 (K1 i a)))
     gAccess _ = constAccess (Proxy :: Proxy f)

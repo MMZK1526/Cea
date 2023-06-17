@@ -37,16 +37,16 @@ import           GHC.TypeLits
 -- > data Foo = Foo Int8 Int16 Int32 Int64
 -- >   deriving (Generic)
 -- >   deriving (Pointable) via WithPointable Foo
-class (Val (SizeOf a), KnownBool (IsPrim a)) => Pointable a where
+class (Val (SizeOf a), KnownBool (IsDirect a)) => Pointable a where
   -- | The size of the type in bytes.
   type SizeOf a :: MyNat
 
-  -- | Whether the type is a primitive type. If the type is not a primitive,
-  -- it will be stored via a layer of pointer indirection.
+  -- | Whether the type is a direct type. If the type is indirect, it will be
+  -- stored via a layer of pointer indirection.
   --
   -- By default, it is @'True@ for all concrete instances in this module, and
   -- @'False@ for all user-defined types.
-  type IsPrim a :: Bool
+  type IsDirect a :: Bool
 
   -- | Term-level version of @SizeOf@.
   size :: a -> Int
@@ -67,7 +67,7 @@ class (Val (SizeOf a), KnownBool (IsPrim a)) => Pointable a where
 instance Pointable Int8 where
   type SizeOf Int8 = FromNat 1
 
-  type IsPrim Int8 = 'True
+  type IsDirect Int8 = 'True
 
   make :: Int8 -> IO (Ptr Int8)
   make = new
@@ -88,7 +88,7 @@ instance Pointable Int8 where
 instance Pointable Int16 where
   type SizeOf Int16 = FromNat 2
 
-  type IsPrim Int16 = 'True
+  type IsDirect Int16 = 'True
 
   make :: Int16 -> IO (Ptr Int16)
   make = new
@@ -109,7 +109,7 @@ instance Pointable Int16 where
 instance Pointable Int32 where
   type SizeOf Int32 = FromNat 4
 
-  type IsPrim Int32 = 'True
+  type IsDirect Int32 = 'True
 
   make :: Int32 -> IO (Ptr Int32)
   make = new
@@ -130,7 +130,7 @@ instance Pointable Int32 where
 instance Pointable Int64 where
   type SizeOf Int64 = FromNat PtrSize
 
-  type IsPrim Int64 = 'True
+  type IsDirect Int64 = 'True
 
   make :: Int64 -> IO (Ptr Int64)
   make = new
@@ -151,7 +151,7 @@ instance Pointable Int64 where
 instance Pointable Word8 where
   type SizeOf Word8 = FromNat 1
 
-  type IsPrim Word8 = 'True
+  type IsDirect Word8 = 'True
 
   make :: Word8 -> IO (Ptr Word8)
   make = new
@@ -172,7 +172,7 @@ instance Pointable Word8 where
 instance Pointable Word16 where
   type SizeOf Word16 = FromNat 2
 
-  type IsPrim Word16 = 'True
+  type IsDirect Word16 = 'True
 
   make :: Word16 -> IO (Ptr Word16)
   make = new
@@ -193,7 +193,7 @@ instance Pointable Word16 where
 instance Pointable Word32 where
   type SizeOf Word32 = FromNat 4
 
-  type IsPrim Word32 = 'True
+  type IsDirect Word32 = 'True
 
   make :: Word32 -> IO (Ptr Word32)
   make = new
@@ -214,7 +214,7 @@ instance Pointable Word32 where
 instance Pointable Word64 where
   type SizeOf Word64 = FromNat PtrSize
 
-  type IsPrim Word64 = 'True
+  type IsDirect Word64 = 'True
 
   make :: Word64 -> IO (Ptr Word64)
   make = new
@@ -237,7 +237,7 @@ instance Pointable Word64 where
 instance Pointable Int where
   type SizeOf Int = FromNat PtrSize
 
-  type IsPrim Int = 'True
+  type IsDirect Int = 'True
 
   make :: Int -> IO (Ptr Int)
   make = fmap castPtr . new @Word64 . fromIntegral
@@ -260,7 +260,7 @@ instance Pointable Int where
 instance Pointable Word where
   type SizeOf Word = FromNat PtrSize
 
-  type IsPrim Word = 'True
+  type IsDirect Word = 'True
 
   make :: Word -> IO (Ptr Word)
   make = fmap castPtr . new @Word64 . fromIntegral
@@ -283,7 +283,7 @@ instance Pointable Word where
 instance Pointable IntPtr where
   type SizeOf IntPtr = FromNat PtrSize
 
-  type IsPrim IntPtr = 'True
+  type IsDirect IntPtr = 'True
 
   make :: IntPtr -> IO (Ptr IntPtr)
   make = fmap castPtr . new @Int64 . fromIntegral
@@ -306,7 +306,7 @@ instance Pointable IntPtr where
 instance Pointable WordPtr where
   type SizeOf WordPtr = FromNat PtrSize
 
-  type IsPrim WordPtr = 'True
+  type IsDirect WordPtr = 'True
 
   make :: WordPtr -> IO (Ptr WordPtr)
   make = fmap castPtr . new @Word64 . fromIntegral
@@ -329,7 +329,7 @@ instance Pointable WordPtr where
 instance Pointable (Ptr a) where
   type SizeOf (Ptr a) = FromNat PtrSize
 
-  type IsPrim (Ptr a) = 'True
+  type IsDirect (Ptr a) = 'True
 
   make :: Ptr a -> IO (Ptr (Ptr a))
   make = fmap castPtr . new . ptrToIntPtr
@@ -352,7 +352,7 @@ instance Pointable (Ptr a) where
 instance Pointable Char where
   type SizeOf Char = FromNat 4
 
-  type IsPrim Char = 'True
+  type IsDirect Char = 'True
 
   make :: Char -> IO (Ptr Char)
   make = fmap castPtr . new @Word32 . fromIntegral . ord
@@ -373,7 +373,7 @@ instance Pointable Char where
 instance Pointable () where
   type SizeOf () = FromNat 0
 
-  type IsPrim () = 'True
+  type IsDirect () = 'True
 
   make :: () -> IO (Ptr ())
   make = const . pure $ nullPtr
@@ -394,7 +394,7 @@ instance Pointable () where
 instance Pointable Float where
   type SizeOf Float = FromNat 4
 
-  type IsPrim Float = 'True
+  type IsDirect Float = 'True
 
   make :: Float -> IO (Ptr Float)
   make = new
@@ -415,7 +415,7 @@ instance Pointable Float where
 instance Pointable Double where
   type SizeOf Double = FromNat PtrSize
 
-  type IsPrim Double = 'True
+  type IsDirect Double = 'True
 
   make :: Double -> IO (Ptr Double)
   make = new
@@ -436,7 +436,7 @@ instance Pointable Double where
 instance Pointable Bool where
   type SizeOf Bool = FromNat 1
 
-  type IsPrim Bool = 'True
+  type IsDirect Bool = 'True
 
   make :: Bool -> IO (Ptr Bool)
   make True  = castPtr <$> new @Word8 1
@@ -456,13 +456,13 @@ instance Pointable Bool where
   {-# INLINE delete #-}
 
 -- The difference between a tuple and a custom record is that a tuple is always
--- treated as a primitive type, hence when a tuple is used as a field in a
--- larger data type, it is always allocated in the same chunk of memory as the
--- parent data type.
+-- treated as a direct type, hence when a tuple is used as a field in a larger
+-- data type, it is always allocated in the same chunk of memory as the parent
+-- data type.
 instance (Pointable a, Pointable b) => Pointable (a, b) where
   type SizeOf (a, b) = SizeOf (P2 a b)
 
-  type IsPrim (a, b) = 'True
+  type IsDirect (a, b) = 'True
 
   make :: (a, b) -> IO (Ptr (a, b))
   make (a, b) = castPtr <$> make (P2 a b)
@@ -485,7 +485,7 @@ instance (Pointable a, Pointable b) => Pointable (a, b) where
 instance (Pointable a, Pointable b, Pointable c) => Pointable (a, b, c) where
   type SizeOf (a, b, c) = SizeOf (P3 a b c)
 
-  type IsPrim (a, b, c) = 'True
+  type IsDirect (a, b, c) = 'True
 
   make :: (a, b, c) -> IO (Ptr (a, b, c))
   make (a, b, c) = castPtr <$> make (P3 a b c)
@@ -512,7 +512,7 @@ instance ( Pointable a
   => Pointable (a, b, c, d) where
     type SizeOf (a, b, c, d) = SizeOf (P4 a b c d)
 
-    type IsPrim (a, b, c, d) = 'True
+    type IsDirect (a, b, c, d) = 'True
 
     make :: (a, b, c, d) -> IO (Ptr (a, b, c, d))
     make (a, b, c, d) = castPtr <$> make (P4 a b c d)
@@ -540,7 +540,7 @@ instance ( Pointable a
   => Pointable (a, b, c, d, e) where
     type SizeOf (a, b, c, d, e) = SizeOf (P5 a b c d e)
 
-    type IsPrim (a, b, c, d, e) = 'True
+    type IsDirect (a, b, c, d, e) = 'True
 
     make :: (a, b, c, d, e) -> IO (Ptr (a, b, c, d, e))
     make (a, b, c, d, e) = castPtr <$> make (P5 a b c d e)
@@ -575,7 +575,7 @@ instance ( Generic a
   => Pointable (WithPointable a) where
     type SizeOf (WithPointable a) = GSizeOf (Rep a)
 
-    type IsPrim (WithPointable a) = GIsPrim (Rep a)
+    type IsDirect (WithPointable a) = GIsPrim (Rep a)
 
     make :: WithPointable a -> IO (Ptr (WithPointable a))
     make a = do
@@ -615,12 +615,15 @@ class (Val (GSizeOf a)) => GPointable a where
   gSize = const . fromIntegral $ val (Proxy @(GSizeOf a))
   {-# INLINE gSize #-}
 
+  -- | The top-layer pointer is already provided.
   gMake :: Ptr (a p) -> a p -> IO ()
 
   gLoad :: Ptr (a p) -> IO (a p)
 
   gStore :: Ptr (a p) -> a p -> IO ()
 
+  -- | The top-layer pointer is not freed here, so in particular for direct
+  -- types this function does nothing.
   gDelete :: Ptr (a p) -> IO ()
 
 instance GPointable U1 where
@@ -707,21 +710,21 @@ instance GPointable a => GPointable (M1 S c a) where
   gDelete ptr = gDelete (castPtr ptr :: Ptr (a p))
   {-# INLINE gDelete #-}
 
--- The implementation for primitive and non-primitive types are evidently
--- different. For example, in terms of @gMake@, we can just allocate
--- @gSize@ bytes for a primitive type, but for non-primitives we need to
--- allocate 8 bytes for the pointer before allocating @gSize@ bytes and store
--- it into the reference pointer.
+-- The implementation for direct and indirect types are evidently different.
+-- For example, in terms of @gMake@, we can just store the value directly into
+-- the pointer for a direct type, but for indirect we need to allocate a new
+-- reference pointer before allocating @gSize@ bytes and store the content into
+-- the reference pointer.
 --
--- We use @IsPrim@ to distinguish the two cases and dispatch the appropriate
+-- We use @IsDirect@ to distinguish the two cases and dispatch the appropriate
 -- implementation in @K1Helper@.
 instance ( Val (GSizeOf (K1 i a))
          , Pointable a
-         , IsPrim a ~ f )
+         , IsDirect a ~ f )
   => GPointable (K1 i a) where
-    type GSizeOf (K1 i a) = 'Si (IsPrim a) ('TypeNat a) (FromNat PtrSize)
+    type GSizeOf (K1 i a) = 'Si (IsDirect a) ('TypeNat a) (FromNat PtrSize)
 
-    type GIsPrim (K1 i a) = IsPrim a
+    type GIsPrim (K1 i a) = IsDirect a
 
     gMake :: Ptr (K1 i a p) -> K1 i a p -> IO ()
     gMake ptr a = if boolVal (Proxy @f)
@@ -753,8 +756,8 @@ instance ( Val (GSizeOf (K1 i a))
       else peek (castPtr ptr :: Ptr (Ptr a)) >>= delete
     {-# INLINE gDelete #-}
 
--- Store and load for primitive and non-primitive fields are different, hence
--- the helper type class @HasSLSize@ is introduced to dispatch the appropriate
+-- Store and load for direct and indirect fields are different, hence the
+-- helper type class @HasSLSize@ is introduced to dispatch the appropriate
 -- implementation.
 instance ( Val (GSizeOf (a :*: b))
          , GPointable a
@@ -767,7 +770,7 @@ instance ( Val (GSizeOf (a :*: b))
   => GPointable (a :*: b) where
     type GSizeOf (a :*: b) = Sum (GSizeOf a) (GSizeOf b)
 
-    -- The product type itself is primitive regardless of the fields. The
+    -- The product type itself is direct regardless of the fields. The
     -- "indirection" will come from the data meta @M1 D@.
     type GIsPrim (a :*: b) = 'True
 
@@ -796,8 +799,8 @@ instance ( Val (GSizeOf (a :*: b))
       gDelete (castPtr ptr `plusPtr` slSize (Proxy @f) (Proxy @a) :: Ptr (b p))
     {-# INLINE gDelete #-}
 
--- | Determines the size for store and load. For non-primitive fields, it should
--- be always the pointer size, i.e. 8 bytes. For primitive fields, it should be
+-- | Determines the size for store and load. For indirect fields, it should
+-- be always the pointer size, i.e. 8 bytes. For direct fields, it should be
 -- the size of the field.
 class (Val (SLSize f a), GPointable a) => HasSLSize (f :: Bool) (a :: * -> *) where
   type SLSize f a :: MyNat

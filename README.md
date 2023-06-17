@@ -85,14 +85,14 @@ main = do
 In the example above, the fields of `Bar`, namely the two `Foo`s, are stored as
 pointers, and the fields of `Foo`, namely the two `Int`s, are stored as values.
 
-This is because custom types are considered as "non-primitive" types, and their
+This is because custom types are considered as "indirect" types, and their
 fields are stored as pointers.
 
 Finally, the `delete` function at the end of the `do`-block frees the structure
 recursively, so that we do not (and shouldn't) access the pointer of each fields
 and free them manually.
 
-Built-in tuples, on the other hand, are treated as primitive types, therefore `((1, 2), (3, 4))` is stored in one contiguous block of memory:
+Built-in tuples, on the other hand, are treated as direct types, therefore `((1, 2), (3, 4))` is stored in one contiguous block of memory:
 
 ```Haskell
 main :: IO ()

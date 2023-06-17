@@ -48,8 +48,8 @@ demoNestedTuples = do
   putStrLn $ "-- Storing " ++ show tupleOfInt8Tuples
   -- Create a pointer that stores this nested tuple.
   -- Since the fields of "TupleOfInt8Tuples" are "Int8Tuple"s and this is a
-  -- non-primitive type, they will be stored as pointers with size of 8 bytes.
-  -- Within each "Int8Tuple", the fields are primitive types, so they will be
+  -- indirect type, they will be stored as pointers with size of 8 bytes.
+  -- Within each "Int8Tuple", the fields are direct types, so they will be
   -- stored as values, each taking 2 bytes (1 for each "Int8").
   ptr  <- make tupleOfInt8Tuples
   putStrLn $ "The address is " ++ show ptr ++ ", which may change at each run"
