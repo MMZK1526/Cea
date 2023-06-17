@@ -136,8 +136,7 @@ class GAccessible ix (a :: Type -> Type) where
   gAccess :: Proxy ix -> Ptr (a p) -> IO (Ptr (GAccessor ix a))
 
 instance ( GPointable (K1 i a)
-         , ConstAccess f (K1  @Type i a)
-         , Rep a ~ x
+         , ConstAccess f (K1 @Type i a)
          , IsDirect a ~ f )
   => GAccessible 0 (K1 i a) where
     type GAccessor 0 (K1 i a) = ConstAccessor (IsDirect a) (K1 i a)
@@ -146,12 +145,45 @@ instance ( GPointable (K1 i a)
     gAccess _ = constAccess (Proxy :: Proxy f)
     {-# INLINE gAccess #-}
 
-instance (GAccessible ix a) => GAccessible ix (M1 i c a) where
+instance (GAccessible (ix :: Nat) a) => GAccessible ix (M1 i c a) where
   type GAccessor ix (M1 i c a) = GAccessor ix a
 
   gAccess :: Proxy ix -> Ptr (M1 i c a p) -> IO (Ptr (GAccessor ix (M1 i c a)))
   gAccess ix p = gAccess ix (castPtr p :: Ptr (a p))
   {-# INLINE gAccess #-}
+
+instance (GAccessible (ix :: Symbol) a) => GAccessible ix (D1 c a) where
+  type GAccessor ix (D1 c a) = GAccessor ix a
+
+  gAccess :: Proxy ix -> Ptr (D1 c a p) -> IO (Ptr (GAccessor ix (D1 c a)))
+  gAccess ix p = gAccess ix (castPtr p :: Ptr (a p))
+  {-# INLINE gAccess #-}
+
+instance (GAccessible (ix :: Symbol) a) => GAccessible ix (C1 c a) where
+  type GAccessor ix (C1 c a) = GAccessor ix a
+
+  gAccess :: Proxy ix -> Ptr (C1 c a p) -> IO (Ptr (GAccessor ix (D1 c a)))
+  gAccess ix p = gAccess ix (castPtr p :: Ptr (a p))
+  {-# INLINE gAccess #-}
+
+instance (GAccessible (ix :: Symbol) a) => GAccessible ix (S1 ('MetaSel ('Just ix) su ss ds) a) where
+  type GAccessor ix (S1 ('MetaSel ('Just ix) su ss ds) a) = GAccessor ix a
+
+  gAccess :: Proxy ix -> Ptr (M1 i c a p) -> IO (Ptr (GAccessor ix (D1 c a)))
+  gAccess ix p = gAccess ix (castPtr p :: Ptr (a p))
+  {-# INLINE gAccess #-}
+
+instance ( GPointable (K1 i a)
+         , ConstAccess f (K1 @Type i a)
+         , IsDirect a ~ f )
+  => GAccessible (ix :: Symbol) (K1 @Type i a) where
+    type GAccessor ix (K1 @Type i a) = GAccessor 0 (K1 @Type i a)
+
+    gAccess :: Proxy ix
+            -> Ptr (K1 @Type i a p)
+            -> IO (Ptr (GAccessor ix (K1 @Type i a)))
+    gAccess _ = gAccess (Proxy :: Proxy 0)
+    {-# INLINE gAccess #-}
 
 instance ( ProductAccess f ix (a :*: b)
          , LessThan ix (GLength a) ~ f, GHasLength a )
