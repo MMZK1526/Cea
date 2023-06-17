@@ -1,4 +1,5 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
+{-# LANGUAGE PolyKinds #-}
 
 -- | This module provides functions to access the fields of a @Pointable@
 -- pointer. It allows access to the pointer to any nested field in the data
@@ -104,7 +105,7 @@ storesAt ptr val = do
 -- It is rarely required to implement this type class manually. Instead, any
 -- data type that derives @Pointable@ via @WithPointable@ will automatically
 -- derive @Accessible@.
-class Accessible (ix :: Nat) a where
+class Accessible ix a where
   type Accessor ix a
   access_ :: Proxy ix -> Ptr a -> IO (Ptr (Accessor ix a))
 
@@ -129,16 +130,19 @@ instance (Pointable a, GAccessible ix (Rep a)) => Accessible ix a where
 -- Generic Accessible
 --------------------------------------------------------------------------------
 
-class GAccessible (ix :: Nat) a where
+class GAccessible ix (a :: Type -> Type) where
   type GAccessor ix a
 
   gAccess :: Proxy ix -> Ptr (a p) -> IO (Ptr (GAccessor ix a))
 
-instance (GPointable (K1 i a), ConstAccess f (K1 i a), Rep a ~ x, IsDirect a ~ f)
+instance ( GPointable (K1 i a)
+         , ConstAccess f (K1  @Type i a)
+         , Rep a ~ x
+         , IsDirect a ~ f )
   => GAccessible 0 (K1 i a) where
     type GAccessor 0 (K1 i a) = ConstAccessor (IsDirect a) (K1 i a)
 
-    gAccess :: Proxy 0 -> Ptr (K1 i a p) -> IO (Ptr (GAccessor 0 (K1 i a)))
+    gAccess :: Proxy 0 -> Ptr (K1 @Type i a p) -> IO (Ptr (GAccessor 0 (K1 i a)))
     gAccess _ = constAccess (Proxy :: Proxy f)
     {-# INLINE gAccess #-}
 
@@ -160,14 +164,14 @@ instance ( ProductAccess f ix (a :*: b)
     gAccess = productAccess (Proxy :: Proxy f)
     {-# INLINE gAccess #-}
 
-class Accessibles (ixs :: [Nat]) a where
+class Accessibles (ixs :: [k]) a where
   type Accessors ixs a
   accesses_ :: Proxy ixs -> Ptr a -> IO (Ptr (Accessors ixs a))
 
 instance Accessibles '[] a where
   type Accessors '[] a = a
 
-  accesses_ :: Proxy ('[] :: [Nat]) -> Ptr a -> IO (Ptr (Accessors '[] a))
+  accesses_ :: Proxy ('[] :: [k]) -> Ptr a -> IO (Ptr (Accessors '[] a))
   accesses_ _ = pure . castPtr
   {-# INLINE accesses_ #-}
 
@@ -215,8 +219,9 @@ type family IsZero (n :: Nat) :: Bool where
   IsZero 0 = 'True
   IsZero _ = 'False
 
-class ConstAccess (f :: Bool) a where
+class ConstAccess (f :: Bool) (a :: Type -> Type) where
   type ConstAccessor f a
+
   constAccess :: Proxy f -> Ptr (a p) -> IO (Ptr (ConstAccessor f a))
 
 instance ConstAccess 'True (K1 i a) where
@@ -235,8 +240,9 @@ instance ConstAccess 'False (K1 i a) where
   constAccess _ = load . castPtr
   {-# INLINE constAccess #-}
 
-class ProductAccess (f :: Bool) (ix :: Nat) a where
+class ProductAccess (f :: Bool) (ix :: Nat)  (a :: Type -> Type) where
   type ProductAccessor f ix a
+
   productAccess :: Proxy f -> Proxy ix -> Ptr (a p)
                 -> IO (Ptr (ProductAccessor f ix a))
 
