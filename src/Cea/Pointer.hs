@@ -802,11 +802,12 @@ instance ( Val (GSizeOf (a :*: b))
 -- | Determines the size for store and load. For indirect fields, it should
 -- be always the pointer size, i.e. 8 bytes. For direct fields, it should be
 -- the size of the field.
-class (Val (SLSize f a), GPointable a) => HasSLSize (f :: Bool) (a :: * -> *) where
-  type SLSize f a :: MyNat
+class (Val (SLSize f a), GPointable a)
+  => HasSLSize (f :: Bool) (a :: * -> *) where
+    type SLSize f a :: MyNat
 
-  slSize :: Proxy f -> Proxy a -> Int
-  slSize _ _ = fromIntegral $ val (Proxy @(SLSize f a))
+    slSize :: Proxy f -> Proxy a -> Int
+    slSize _ _ = fromIntegral $ val (Proxy @(SLSize f a))
 
 instance (Val (GSizeOf a), KnownBool f, GPointable a) => HasSLSize f a where
   type SLSize f a = Si f (GSizeOf a) (FromNat PtrSize)
