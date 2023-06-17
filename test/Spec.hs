@@ -25,12 +25,13 @@ data MyQuadruple a b c d
     deriving (Eq, Show, Generic)
     deriving Pointable via WithPointable (MyQuadruple a b c d)
 
-type CustumTuple = MyTuple (MyQuadruple Int8 Int16 Int32 (MyTuple Char Word8))
+type CustomTuple = MyTuple (MyQuadruple Int8 Int16 Int32 (MyTuple Char Word8))
                            (MyTuple (MyTriple Int64 Float Double)
                                     (MyQuadruple () Bool IntPtr WordPtr))
 
 main :: IO ()
-main = hspec do
+main = 
+  hspec do
   describe "Primitive type load & store" do
     it "Can make, load, and store Int8" $ primitiveAssertion @Int8
     it "Can make, load, and store Int16" $ primitiveAssertion @Int16
@@ -78,17 +79,17 @@ main = hspec do
     it "Can access fields in FancyTuple" do
       ptr <- make val1
       loadAt @0 ptr >>= (`shouldBe` (1, 1))
-      loadsAt @[0, 0] ptr >>= (`shouldBe` 1)
-      loadsAt @[0, 1] ptr >>= (`shouldBe` 1)
+      loadsAt @'[0, 0] ptr >>= (`shouldBe` 1)
+      loadsAt @'[0, 1] ptr >>= (`shouldBe` 1)
       loadAt @1 ptr >>= (`shouldBe` 4)
       loadAt @2 ptr >>= (`shouldBe` (5, 1, 4, ()))
-      loadsAt @[2, 0] ptr >>= (`shouldBe` 5)
-      loadsAt @[2, 1] ptr >>= (`shouldBe` 1)
-      loadsAt @[2, 2] ptr >>= (`shouldBe` 4)
-      loadsAt @[2, 3] ptr >>= (`shouldBe` ())
+      loadsAt @'[2, 0] ptr >>= (`shouldBe` 5)
+      loadsAt @'[2, 1] ptr >>= (`shouldBe` 1)
+      loadsAt @'[2, 2] ptr >>= (`shouldBe` 4)
+      loadsAt @'[2, 3] ptr >>= (`shouldBe` ())
       loadAt @3 ptr >>= (`shouldBe` True)
       loadAt @4 ptr >>= (`shouldBe` ('9', 810))
-      loadsAt @[4, 0] ptr >>= (`shouldBe` '9')
+      loadsAt @'[4, 0] ptr >>= (`shouldBe` '9')
     it "Can modify fields in FancyTuple" do
       ptr <- make val1
       storeAt @0 ptr (4, 5)
@@ -101,22 +102,75 @@ main = hspec do
       loadAt @3 ptr >>= (`shouldBe` False)
       storeAt @4 ptr ('8', 1919)
       loadAt @4 ptr >>= (`shouldBe` ('8', 1919))
-      storesAt @[0, 0] ptr 1
-      loadsAt @[0, 0] ptr >>= (`shouldBe` 1)
-      storesAt @[0, 1] ptr 1
-      loadsAt @[0, 1] ptr >>= (`shouldBe` 1)
-      storesAt @[2, 0] ptr 5
-      loadsAt @[2, 0] ptr >>= (`shouldBe` 5)
-      storesAt @[2, 1] ptr 1
-      loadsAt @[2, 1] ptr >>= (`shouldBe` 1)
-      storesAt @[2, 2] ptr 4
-      loadsAt @[2, 2] ptr >>= (`shouldBe` 4)
-      storesAt @[2, 3] ptr ()
-      loadsAt @[2, 3] ptr >>= (`shouldBe` ())
-      storesAt @[4, 0] ptr '9'
-      loadsAt @[4, 0] ptr >>= (`shouldBe` '9')
-      storesAt @[4, 1] ptr 810
-      loadsAt @[4, 1] ptr >>= (`shouldBe` 810)
+      storesAt @'[0, 0] ptr 1
+      loadsAt @'[0, 0] ptr >>= (`shouldBe` 1)
+      storesAt @'[0, 1] ptr 1
+      loadsAt @'[0, 1] ptr >>= (`shouldBe` 1)
+      storesAt @'[2, 0] ptr 5
+      loadsAt @'[2, 0] ptr >>= (`shouldBe` 5)
+      storesAt @'[2, 1] ptr 1
+      loadsAt @'[2, 1] ptr >>= (`shouldBe` 1)
+      storesAt @'[2, 2] ptr 4
+      loadsAt @'[2, 2] ptr >>= (`shouldBe` 4)
+      storesAt @'[2, 3] ptr ()
+      loadsAt @'[2, 3] ptr >>= (`shouldBe` ())
+      storesAt @'[4, 0] ptr '9'
+      loadsAt @'[4, 0] ptr >>= (`shouldBe` '9')
+      storesAt @'[4, 1] ptr 810
+      loadsAt @'[4, 1] ptr >>= (`shouldBe` 810)
+      delete ptr
+  describe "Custom tuple load & store" do
+    let val1 = MyTuple (MyQuadruple 1 1 4 (MyTuple '5' 1))
+                       (MyTuple (MyTriple 5 1 4) (MyQuadruple () True 9 810)) :: CustomTuple
+    let val2 = MyTuple (MyQuadruple 4 5 1 (MyTuple '8' 2))
+                       (MyTuple (MyTriple 10 2 8) (MyQuadruple () False 8 1919)) :: CustomTuple
+    it "Can make, load, and store CustomTuple" do
+      ptr <- make val1
+      load ptr >>= (`shouldBe` val1)
+      store ptr val2
+      load ptr >>= (`shouldBe` val2)
+      delete ptr
+    it "Can access fields in CustomTuple" do
+      ptr <- make val1
+      loadsAt @'[0, 0] ptr >>= (`shouldBe` 1)
+      loadsAt @'[0, 1] ptr >>= (`shouldBe` 1)
+      loadsAt @'[0, 2] ptr >>= (`shouldBe` 4)
+      loadsAt @'[0, 3, 0] ptr >>= (`shouldBe` '5')
+      loadsAt @'[0, 3, 1] ptr >>= (`shouldBe` 1)
+      loadsAt @'[1, 0, 0] ptr >>= (`shouldBe` 5)
+      loadsAt @'[1, 0, 1] ptr >>= (`shouldBe` 1)
+      loadsAt @'[1, 0, 2] ptr >>= (`shouldBe` 4)
+      loadsAt @'[1, 1, 0] ptr >>= (`shouldBe` ())
+      loadsAt @'[1, 1, 1] ptr >>= (`shouldBe` True)
+      loadsAt @'[1, 1, 2] ptr >>= (`shouldBe` 9)
+      loadsAt @'[1, 1, 3] ptr >>= (`shouldBe` 810)
+    it "Can modify fields in CustomTuple" do
+      ptr <- make val1
+      storesAt @'[0, 0] ptr 4
+      loadsAt @'[0, 0] ptr >>= (`shouldBe` 4)
+      storesAt @'[0, 1] ptr 5
+      loadsAt @'[0, 1] ptr >>= (`shouldBe` 5)
+      storesAt @'[0, 2] ptr 1
+      loadsAt @'[0, 2] ptr >>= (`shouldBe` 1)
+      storesAt @'[0, 3, 0] ptr '8'
+      loadsAt @'[0, 3, 0] ptr >>= (`shouldBe` '8')
+      storesAt @'[0, 3, 1] ptr 2
+      loadsAt @'[0, 3, 1] ptr >>= (`shouldBe` 2)
+      storesAt @'[1, 0, 0] ptr 10
+      loadsAt @'[1, 0, 0] ptr >>= (`shouldBe` 10)
+      storesAt @'[1, 0, 1] ptr 2
+      loadsAt @'[1, 0, 1] ptr >>= (`shouldBe` 2)
+      storesAt @'[1, 0, 2] ptr 8
+      loadsAt @'[1, 0, 2] ptr >>= (`shouldBe` 8)
+      storesAt @'[1, 1, 0] ptr ()
+      loadsAt @'[1, 1, 0] ptr >>= (`shouldBe` ())
+      storesAt @'[1, 1, 1] ptr False
+      loadsAt @'[1, 1, 1] ptr >>= (`shouldBe` False)
+      storesAt @'[1, 1, 2] ptr 8
+      loadsAt @'[1, 1, 2] ptr >>= (`shouldBe` 8)
+      storesAt @'[1, 1, 3] ptr 1919
+      loadsAt @'[1, 1, 3] ptr >>= (`shouldBe` 1919)
+      loadsAt @'[] ptr >>= (`shouldBe` val2)
       delete ptr
 
 primitiveAssertion :: forall a. (Bounded a, Pointable a, Eq a, Show a) => IO ()
