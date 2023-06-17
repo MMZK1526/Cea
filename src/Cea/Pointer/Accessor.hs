@@ -251,7 +251,7 @@ instance (GAccessible ix a) => ProductAccess 'True ix (a :*: b) where
 instance ( GAccessible ix b
          , KnownNat (ToNat (SLSize f a))
          , ix ~ ix' - GLength a, GIsPrim a ~ f
-         , MkSpace f a )
+         , HasSLSize f a )
   => ProductAccess 'False ix' (a :*: b) where
     type ProductAccessor 'False ix' (a :*: b) = GAccessor (ix' - GLength a) b
 

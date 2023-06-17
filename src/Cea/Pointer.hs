@@ -344,7 +344,7 @@ instance Pointable (Ptr a) where
   {-# INLINE store #-}
 
   delete :: Ptr (Ptr a) -> IO ()
-  delete ptr = free' ptr
+  delete = free'
   {-# INLINE delete #-}
 
 -- We want to know the size of "Char" at compile time, so we will always assume
@@ -579,7 +579,8 @@ instance ( Generic a
 
     make :: WithPointable a -> IO (Ptr (WithPointable a))
     make a = do
-      ptr <- gMake . from $ unWithPointable a
+      ptr <- mallocBytes (size a)
+      gMake ptr . from $ unWithPointable a
       pure $ castPtr ptr
     {-# INLINE make #-}
 
@@ -614,7 +615,7 @@ class (Val (GSizeOf a)) => GPointable a where
   gSize = const . fromIntegral $ val (Proxy @(GSizeOf a))
   {-# INLINE gSize #-}
 
-  gMake :: a p -> IO (Ptr (a p))
+  gMake :: Ptr (a p) -> a p -> IO ()
 
   gLoad :: Ptr (a p) -> IO (a p)
 
@@ -627,8 +628,8 @@ instance GPointable U1 where
 
   type GIsPrim U1 = 'True
 
-  gMake :: U1 p -> IO (Ptr (U1 p))
-  gMake = const . pure $ nullPtr
+  gMake :: Ptr (U1 p) -> U1 p -> IO ()
+  gMake _ _ = pure ()
   {-# INLINE gMake #-}
 
   gLoad :: Ptr (U1 p) -> IO (U1 p)
@@ -648,8 +649,8 @@ instance GPointable a => GPointable (M1 D c a) where
 
   type GIsPrim (M1 D c a) = 'False -- 'False for custom data types
 
-  gMake :: M1 i c a p -> IO (Ptr (M1 D c a p))
-  gMake = fmap castPtr . gMake . unM1
+  gMake :: Ptr (M1 D c a p) -> M1 i c a p -> IO ()
+  gMake ptr a = gMake (castPtr ptr) (unM1 a)
   {-# INLINE gMake #-}
 
   gLoad :: Ptr (M1 D c a p) -> IO (M1 D c a p)
@@ -669,8 +670,8 @@ instance GPointable a => GPointable (M1 C c a) where
 
   type GIsPrim (M1 C c a) = GIsPrim a
 
-  gMake :: M1 i c a p -> IO (Ptr (M1 C c a p))
-  gMake = fmap castPtr . gMake . unM1
+  gMake :: Ptr (M1 C c a p) -> M1 i c a p -> IO ()
+  gMake ptr a = gMake (castPtr ptr) (unM1 a)
   {-# INLINE gMake #-}
 
   gLoad :: Ptr (M1 C c a p) -> IO (M1 C c a p)
@@ -690,8 +691,8 @@ instance GPointable a => GPointable (M1 S c a) where
 
   type GIsPrim (M1 S c a) = GIsPrim a
 
-  gMake :: M1 i c a p -> IO (Ptr (M1 S c a p))
-  gMake = fmap castPtr . gMake . unM1
+  gMake :: Ptr (M1 S c a p) -> M1 i c a p -> IO ()
+  gMake ptr a = gMake (castPtr ptr) (unM1 a)
   {-# INLINE gMake #-}
 
   gLoad :: Ptr (M1 S c a p) -> IO (M1 S c a p)
@@ -722,14 +723,12 @@ instance ( Val (GSizeOf (K1 i a))
 
     type GIsPrim (K1 i a) = IsPrim a
 
-    gMake :: K1 i a p -> IO (Ptr (K1 i a p))
-    gMake a = if boolVal (Proxy @f)
-      then fmap castPtr . make $ unK1 a
-      else do 
-        ptr  <- make (unK1 a)
-        ptr' <- mallocBytes ptrSize
-        poke ptr' ptr
-        pure $ castPtr ptr'
+    gMake :: Ptr (K1 i a p) -> K1 i a p -> IO ()
+    gMake ptr a = if boolVal (Proxy @f)
+      then store (castPtr ptr) $ unK1 a
+      else do
+        ptr' <- make (unK1 a)
+        poke (castPtr ptr) ptr'
     {-# INLINE gMake #-}
 
     gLoad :: Ptr (K1 i a p) -> IO (K1 i a p)
@@ -755,7 +754,7 @@ instance ( Val (GSizeOf (K1 i a))
     {-# INLINE gDelete #-}
 
 -- Store and load for primitive and non-primitive fields are different, hence
--- the helper type class @MkSpace@ is introduced to dispatch the appropriate
+-- the helper type class @HasSLSize@ is introduced to dispatch the appropriate
 -- implementation.
 instance ( Val (GSizeOf (a :*: b))
          , GPointable a
@@ -772,14 +771,10 @@ instance ( Val (GSizeOf (a :*: b))
     -- "indirection" will come from the data meta @M1 D@.
     type GIsPrim (a :*: b) = 'True
 
-    gMake :: (a :*: b) p -> IO (Ptr ((a :*: b) p))
-    gMake a = do
-      ptr <- mallocBytes $ gSize a
-      mkSpace (castPtr ptr) (Proxy @f) (Proxy @a)
-      mkSpace (castPtr ptr `plusPtr` slSize (Proxy @f) (Proxy @a))
-              (Proxy @g) (Proxy @b)
-      gStore ptr a
-      pure ptr
+    gMake :: Ptr ((a :*: b) p) -> (a :*: b) p -> IO ()
+    gMake ptr x@(a :*: b) = do
+      gMake (castPtr ptr) a
+      gMake (castPtr ptr `plusPtr` slSize (Proxy @f) (Proxy @a)) b
     {-# INLINE gMake #-}
 
     gLoad :: Ptr ((a :*: b) p) -> IO ((a :*: b) p)
@@ -804,24 +799,14 @@ instance ( Val (GSizeOf (a :*: b))
 -- | Determines the size for store and load. For non-primitive fields, it should
 -- be always the pointer size, i.e. 8 bytes. For primitive fields, it should be
 -- the size of the field.
-class (Val (SLSize f a), GPointable a) => MkSpace (f :: Bool) (a :: * -> *) where
+class (Val (SLSize f a), GPointable a) => HasSLSize (f :: Bool) (a :: * -> *) where
   type SLSize f a :: MyNat
 
   slSize :: Proxy f -> Proxy a -> Int
   slSize _ _ = fromIntegral $ val (Proxy @(SLSize f a))
 
-  mkSpace :: Ptr (a p) -> Proxy f -> Proxy a -> IO ()
-
-instance (Val (GSizeOf a), KnownBool f, GPointable a) => MkSpace f a where
+instance (Val (GSizeOf a), KnownBool f, GPointable a) => HasSLSize f a where
   type SLSize f a = Si f (GSizeOf a) (FromNat PtrSize)
-
-  mkSpace :: Ptr (a p) -> Proxy f -> Proxy a -> IO ()
-  mkSpace ptr _ _ = if boolVal (Proxy @f)
-    then pure ()
-    else do
-      ptr' <- mallocBytes . fromIntegral $ val (Proxy @(GSizeOf a))
-      poke (castPtr ptr :: Ptr (Ptr Int64)) (castPtr ptr' :: Ptr Int64)
-  {-# INLINE mkSpace #-}
 
 
 --------------------------------------------------------------------------------
