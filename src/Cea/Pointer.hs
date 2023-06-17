@@ -1,3 +1,9 @@
+{-# LANGUAGE CPP #-}
+
+#ifndef CEA_DEBUG
+-- #define CEA_DEBUG
+#endif
+
 -- | This module contains the type class @Pointable@, which enables the generic
 -- marshalling between C-pointer and Haskell data types. It implements
 -- @Pointable@ for the "primitive" types, and provides a generic implementation
@@ -55,6 +61,9 @@ class (Val (SizeOf a), KnownBool (IsPrim a)) => Pointable a where
   -- | Store the value in the pointer.
   store :: Ptr a -> a -> IO ()
 
+  -- | Free the pointer recursively.
+  delete :: Ptr a -> IO ()
+
 instance Pointable Int8 where
   type SizeOf Int8 = FromNat 1
 
@@ -71,6 +80,10 @@ instance Pointable Int8 where
   store :: Ptr Int8 -> Int8 -> IO ()
   store = poke
   {-# INLINE store #-}
+
+  delete :: Ptr Int8 -> IO ()
+  delete = free'
+  {-# INLINE delete #-}
 
 instance Pointable Int16 where
   type SizeOf Int16 = FromNat 2
@@ -89,6 +102,10 @@ instance Pointable Int16 where
   store = poke
   {-# INLINE store #-}
 
+  delete :: Ptr Int16 -> IO ()
+  delete = free'
+  {-# INLINE delete #-}
+
 instance Pointable Int32 where
   type SizeOf Int32 = FromNat 4
 
@@ -105,6 +122,10 @@ instance Pointable Int32 where
   store :: Ptr Int32 -> Int32 -> IO ()
   store = poke
   {-# INLINE store #-}
+
+  delete :: Ptr Int32 -> IO ()
+  delete = free'
+  {-# INLINE delete #-}
 
 instance Pointable Int64 where
   type SizeOf Int64 = FromNat PtrSize
@@ -123,6 +144,10 @@ instance Pointable Int64 where
   store = poke
   {-# INLINE store #-}
 
+  delete :: Ptr Int64 -> IO ()
+  delete = free'
+  {-# INLINE delete #-}
+
 instance Pointable Word8 where
   type SizeOf Word8 = FromNat 1
 
@@ -135,6 +160,10 @@ instance Pointable Word8 where
   load :: Ptr Word8 -> IO Word8
   load = peek
   {-# INLINE load #-}
+
+  delete :: Ptr Word8 -> IO ()
+  delete = free'
+  {-# INLINE delete #-}
 
   store :: Ptr Word8 -> Word8 -> IO ()
   store = poke
@@ -157,6 +186,10 @@ instance Pointable Word16 where
   store = poke
   {-# INLINE store #-}
 
+  delete :: Ptr Word16 -> IO ()
+  delete = free'
+  {-# INLINE delete #-}
+
 instance Pointable Word32 where
   type SizeOf Word32 = FromNat 4
 
@@ -174,6 +207,10 @@ instance Pointable Word32 where
   store = poke
   {-# INLINE store #-}
 
+  delete :: Ptr Word32 -> IO ()
+  delete = free'
+  {-# INLINE delete #-}
+
 instance Pointable Word64 where
   type SizeOf Word64 = FromNat PtrSize
 
@@ -190,6 +227,10 @@ instance Pointable Word64 where
   store :: Ptr Word64 -> Word64 -> IO ()
   store = poke
   {-# INLINE store #-}
+
+  delete :: Ptr Word64 -> IO ()
+  delete = free'
+  {-# INLINE delete #-}
 
 -- We want to know the size of "Int" at compile time, so we will always assume
 -- it takes eight bytes.
@@ -210,6 +251,10 @@ instance Pointable Int where
   store ptr = poke (castPtr ptr) . fromIntegral @_ @Word64
   {-# INLINE store #-}
 
+  delete :: Ptr Int -> IO ()
+  delete = free'
+  {-# INLINE delete #-}
+
 -- We want to know the size of "Word" at compile time, so we will always assume
 -- it takes eight bytes.
 instance Pointable Word where
@@ -228,6 +273,10 @@ instance Pointable Word where
   store :: Ptr Word -> Word -> IO ()
   store ptr = poke (castPtr ptr) . fromIntegral @_ @Word64
   {-# INLINE store #-}
+
+  delete :: Ptr Word -> IO ()
+  delete = free'
+  {-# INLINE delete #-}
 
 -- We want to know the size of "IntPtr" at compile time, so we will always
 -- assume it takes eight bytes.
@@ -248,6 +297,10 @@ instance Pointable IntPtr where
   store ptr = poke (castPtr ptr) . fromIntegral @_ @Word64
   {-# INLINE store #-}
 
+  delete :: Ptr IntPtr -> IO ()
+  delete = free'
+  {-# INLINE delete #-}
+
 -- We want to know the size of "WordPtr" at compile time, so we will always
 -- assume it takes eight bytes.
 instance Pointable WordPtr where
@@ -266,6 +319,10 @@ instance Pointable WordPtr where
   store :: Ptr WordPtr -> WordPtr -> IO ()
   store ptr = poke (castPtr ptr) . fromIntegral @_ @Word64
   {-# INLINE store #-}
+
+  delete :: Ptr WordPtr -> IO ()
+  delete = free'
+  {-# INLINE delete #-}
 
 -- We want to know the size of "Ptr" at compile time, so we will always assume
 -- it takes eight bytes.
@@ -286,6 +343,10 @@ instance Pointable (Ptr a) where
   store ptr = poke (castPtr ptr) . ptrToIntPtr
   {-# INLINE store #-}
 
+  delete :: Ptr (Ptr a) -> IO ()
+  delete ptr = print 114514 >> free' ptr
+  {-# INLINE delete #-}
+
 -- We want to know the size of "Char" at compile time, so we will always assume
 -- it takes four bytes.
 instance Pointable Char where
@@ -305,6 +366,10 @@ instance Pointable Char where
   store ptr = poke (castPtr ptr) . fromIntegral @_ @Word32 . ord
   {-# INLINE store #-}
 
+  delete :: Ptr Char -> IO ()
+  delete = free'
+  {-# INLINE delete #-}
+
 instance Pointable () where
   type SizeOf () = FromNat 0
 
@@ -321,6 +386,10 @@ instance Pointable () where
   store :: Ptr () -> () -> IO ()
   store = const . const $ pure ()
   {-# INLINE store #-}
+
+  delete :: Ptr () -> IO ()
+  delete = const $ pure ()
+  {-# INLINE delete #-}
 
 instance Pointable Float where
   type SizeOf Float = FromNat 4
@@ -339,6 +408,10 @@ instance Pointable Float where
   store = poke
   {-# INLINE store #-}
 
+  delete :: Ptr Float -> IO ()
+  delete = free'
+  {-# INLINE delete #-}
+
 instance Pointable Double where
   type SizeOf Double = FromNat PtrSize
 
@@ -351,6 +424,10 @@ instance Pointable Double where
   load :: Ptr Double -> IO Double
   load = peek
   {-# INLINE load #-}
+
+  delete :: Ptr Double -> IO ()
+  delete = free'
+  {-# INLINE delete #-}
 
   store :: Ptr Double -> Double -> IO ()
   store = poke
@@ -373,6 +450,10 @@ instance Pointable Bool where
   store :: Ptr Bool -> Bool -> IO ()
   store ptr b = poke (castPtr ptr) (if b then 1 else 0 :: Word8)
   {-# INLINE store #-}
+
+  delete :: Ptr Bool -> IO ()
+  delete = free'
+  {-# INLINE delete #-}
 
 -- The difference between a tuple and a custom record is that a tuple is always
 -- treated as a primitive type, hence when a tuple is used as a field in a
@@ -397,6 +478,10 @@ instance (Pointable a, Pointable b) => Pointable (a, b) where
   store ptr (a, b) = store (castPtr ptr) (P2 a b)
   {-# INLINE store #-}
 
+  delete :: Ptr (a, b) -> IO ()
+  delete ptr = delete (castPtr ptr :: Ptr (P2 a b))
+  {-# INLINE delete #-}
+
 instance (Pointable a, Pointable b, Pointable c) => Pointable (a, b, c) where
   type SizeOf (a, b, c) = SizeOf (P3 a b c)
 
@@ -415,6 +500,10 @@ instance (Pointable a, Pointable b, Pointable c) => Pointable (a, b, c) where
   store :: Ptr (a, b, c) -> (a, b, c) -> IO ()
   store ptr (a, b, c) = store (castPtr ptr) (P3 a b c)
   {-# INLINE store #-}
+
+  delete :: Ptr (a, b, c) -> IO ()
+  delete ptr = delete (castPtr ptr :: Ptr (P3 a b c))
+  {-# INLINE delete #-}
 
 instance ( Pointable a
          , Pointable b
@@ -439,6 +528,10 @@ instance ( Pointable a
     store ptr (a, b, c, d) = store (castPtr ptr) (P4 a b c d)
     {-# INLINE store #-}
 
+    delete :: Ptr (a, b, c, d) -> IO ()
+    delete ptr = delete (castPtr ptr :: Ptr (P4 a b c d))
+    {-# INLINE delete #-}
+
 instance ( Pointable a
          , Pointable b
          , Pointable c
@@ -462,6 +555,10 @@ instance ( Pointable a
     store :: Ptr (a, b, c, d, e) -> (a, b, c, d, e) -> IO ()
     store ptr (a, b, c, d, e) = store (castPtr ptr) (P5 a b c d e)
     {-# INLINE store #-}
+
+    delete :: Ptr (a, b, c, d, e) -> IO ()
+    delete ptr = delete (castPtr ptr :: Ptr (P5 a b c d e))
+    {-# INLINE delete #-}
 
 
 --------------------------------------------------------------------------------
@@ -498,6 +595,10 @@ instance ( Generic a
       gStore ptr' $ from $ unWithPointable a
     {-# INLINE store #-}
 
+    delete :: Ptr (WithPointable a) -> IO ()
+    delete ptr = gDelete (castPtr ptr :: Ptr (Rep a p)) >> free' ptr
+    {-# INLINE delete #-}
+
 
 --------------------------------------------------------------------------------
 -- Generic Pointable
@@ -519,6 +620,8 @@ class (Val (GSizeOf a)) => GPointable a where
 
   gStore :: Ptr (a p) -> a p -> IO ()
 
+  gDelete :: Ptr (a p) -> IO ()
+
 instance GPointable U1 where
   type GSizeOf U1 = FromNat 0
 
@@ -535,6 +638,10 @@ instance GPointable U1 where
   gStore :: Ptr (U1 p) -> U1 p -> IO ()
   gStore = const . const $ pure ()
   {-# INLINE gStore #-}
+
+  gDelete :: Ptr (U1 p) -> IO ()
+  gDelete = const $ pure ()
+  {-# INLINE gDelete #-}
 
 instance GPointable a => GPointable (M1 D c a) where
   type GSizeOf (M1 D c a) = GSizeOf a
@@ -553,6 +660,10 @@ instance GPointable a => GPointable (M1 D c a) where
   gStore ptr = gStore (castPtr ptr) . unM1
   {-# INLINE gStore #-}
 
+  gDelete :: Ptr (M1 D c a p) -> IO ()
+  gDelete ptr = gDelete (castPtr ptr :: Ptr (a p))
+  {-# INLINE gDelete #-}
+
 instance GPointable a => GPointable (M1 C c a) where
   type GSizeOf (M1 C c a) = GSizeOf a
 
@@ -570,6 +681,10 @@ instance GPointable a => GPointable (M1 C c a) where
   gStore ptr = gStore (castPtr ptr) . unM1
   {-# INLINE gStore #-}
 
+  gDelete :: Ptr (M1 C c a p) -> IO ()
+  gDelete ptr = gDelete (castPtr ptr :: Ptr (a p))
+  {-# INLINE gDelete #-}
+
 instance GPointable a => GPointable (M1 S c a) where
   type GSizeOf (M1 S c a) = GSizeOf a
 
@@ -586,6 +701,10 @@ instance GPointable a => GPointable (M1 S c a) where
   gStore :: Ptr (M1 S c a p) -> M1 S c a p -> IO ()
   gStore ptr = gStore (castPtr ptr) . unM1
   {-# INLINE gStore #-}
+
+  gDelete :: Ptr (M1 S c a p) -> IO ()
+  gDelete ptr = gDelete (castPtr ptr :: Ptr (a p))
+  {-# INLINE gDelete #-}
 
 -- The implementation for primitive and non-primitive types are evidently
 -- different. For example, in terms of @gMake@, we can just allocate
@@ -629,6 +748,12 @@ instance ( Val (GSizeOf (K1 i a))
         store ptr' (unK1 a)
     {-# INLINE gStore #-}
 
+    gDelete :: Ptr (K1 i a p) -> IO ()
+    gDelete ptr = if boolVal (Proxy @f)
+      then pure ()
+      else peek (castPtr ptr :: Ptr (Ptr a)) >>= delete
+    {-# INLINE gDelete #-}
+
 -- Store and load for primitive and non-primitive fields are different, hence
 -- the helper type class @MkSpace@ is introduced to dispatch the appropriate
 -- implementation.
@@ -651,7 +776,8 @@ instance ( Val (GSizeOf (a :*: b))
     gMake a = do
       ptr <- mallocBytes $ gSize a
       mkSpace (castPtr ptr) (Proxy @f) (Proxy @a)
-      mkSpace (castPtr ptr `plusPtr` ptrSize) (Proxy @g) (Proxy @b)
+      mkSpace (castPtr ptr `plusPtr` slSize (Proxy @f) (Proxy @a))
+              (Proxy @g) (Proxy @b)
       gStore ptr a
       pure ptr
     {-# INLINE gMake #-}
@@ -669,10 +795,16 @@ instance ( Val (GSizeOf (a :*: b))
       gStore (castPtr ptr `plusPtr` slSize (Proxy @f) (Proxy @a)) b
     {-# INLINE gStore #-}
 
+    gDelete :: Ptr ((a :*: b) p) -> IO ()
+    gDelete ptr = do
+      gDelete (castPtr ptr :: Ptr (a p))
+      gDelete (castPtr ptr `plusPtr` slSize (Proxy @f) (Proxy @a) :: Ptr (b p))
+    {-# INLINE gDelete #-}
+
 -- | Determines the size for store and load. For non-primitive fields, it should
 -- be always the pointer size, i.e. 8 bytes. For primitive fields, it should be
 -- the size of the field.
-class Val (SLSize f a) => MkSpace (f :: Bool) (a :: * -> *) where
+class (Val (SLSize f a), GPointable a) => MkSpace (f :: Bool) (a :: * -> *) where
   type SLSize f a :: MyNat
 
   slSize :: Proxy f -> Proxy a -> Int
@@ -680,7 +812,7 @@ class Val (SLSize f a) => MkSpace (f :: Bool) (a :: * -> *) where
 
   mkSpace :: Ptr (a p) -> Proxy f -> Proxy a -> IO ()
 
-instance (Val (GSizeOf a), KnownBool f) => MkSpace f a where
+instance (Val (GSizeOf a), KnownBool f, GPointable a) => MkSpace f a where
   type SLSize f a = Si f (GSizeOf a) (FromNat PtrSize)
 
   mkSpace :: Ptr (a p) -> Proxy f -> Proxy a -> IO ()
@@ -693,7 +825,7 @@ instance (Val (GSizeOf a), KnownBool f) => MkSpace f a where
 
 
 --------------------------------------------------------------------------------
--- Helper Types
+-- Helper Types & Functions
 --------------------------------------------------------------------------------
 
 -- | A type-level natural number that refer to the size of a type.
@@ -803,3 +935,16 @@ type PtrSize = 8
 ptrSize :: Int
 ptrSize = val (Proxy @(FromNat PtrSize))
 {-# INLINE ptrSize #-}
+
+-- | For debugging purpose.
+#ifdef CEA_DEBUG
+free' :: forall a. (Pointable a, Val (SizeOf a)) => Ptr a -> IO ()
+free' ptr = do
+  putStrLn $ "Freeing " ++ show (val (Proxy @(SizeOf a))) ++ " byte(s)."
+  free ptr
+{-# INLINE free' #-}
+#else
+free' :: forall a. (Pointable a, Val (SizeOf a)) => Ptr a -> IO ()
+free' = free
+{-# INLINE free' #-}
+#endif

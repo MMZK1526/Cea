@@ -37,6 +37,7 @@ demoPrimitive = do
   putStrLn $ "-- Loading the content of " ++ show ptr'' ++ " as 'Ptr Char'"
   val'' <- load ptr''
   putStrLn [val'']
+  delete ptr
 
 demoNestedTuples :: IO ()
 demoNestedTuples = do
@@ -69,6 +70,7 @@ demoNestedTuples = do
   putStrLn $ "-- Loading the content of " ++ show ptr
   val2 <- load ptr
   print val2
+  delete ptr
 
 demoBuiltinTuples :: IO ()
 demoBuiltinTuples = do
@@ -96,6 +98,7 @@ demoBuiltinTuples = do
   putStrLn $ "-- Loading the content of " ++ show ptr'
   val2 <- load ptr'
   print val2
+  delete ptr
 
 demoArray :: IO ()
 demoArray = do
@@ -143,6 +146,7 @@ fibCea n = do
     storeAt @0 ptr b
     storeAt @1 ptr (a + b)
   Tuple a b <- load ptr
+  delete ptr
   pure $ a + b
 
 main :: IO ()
@@ -152,6 +156,6 @@ main = do
   --   [ bench "fib" $ whnf fib n
   --   , bench "fibCea" $ whnfAppIO fibCea n ]
   -- demoPrimitive >> putStrLn ""
-  -- demoNestedTuples >> putStrLn ""
+  demoNestedTuples >> putStrLn ""
   -- demoBuiltinTuples >> putStrLn ""
-  demoArray >> putStrLn ""
+  -- demoArray >> putStrLn ""

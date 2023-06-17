@@ -30,7 +30,7 @@ import Cea.Pointer.Accessor
 
 ### Pointable
 
-Use `make` to create a pointer, use `load` and `store` to read and write to the pointer.
+Use `make` to create a pointer, use `load` and `store` to read and write to the pointer. Use `delete` to free the pointer.
 
 ```Haskell
 main :: IO ()
@@ -41,10 +41,10 @@ main = do
   store ptr 1
   val <- load ptr
   print val -- 1
+  delete ptr -- free the pointer
 ```
 
-Note that currently we do not deal with freeing the pointers, and the examples here will contain
-memory leaks.
+After calling `delete`, the pointer is no longer valid and should not be used.
 
 `make` can be used on any type that is an instance of `Pointable`, which is a partial generalisation of `Storable`. It has been implemented on many common data types, for example, tuples:
 
@@ -57,6 +57,7 @@ main = do
   store ptr (1, 2)
   val <- load ptr
   print val -- (1, 2)
+  delete ptr
 ```
 
 To make custom data types an instance of `Pointable`, we can derive via the wrapper `WithPointable`:
@@ -77,6 +78,8 @@ main = do
   print val -- Bar (Foo 0 0) (Foo 0 0)
   store ptr (Bar (Foo 1 2) (Foo 3 4))
   val <- load ptr
+  print val -- Bar (Foo 1 2) (Foo 3 4)
+  delete ptr
 ```
 
 In the example above, the fields of `Bar`, namely the two `Foo`s, are stored as
@@ -84,6 +87,10 @@ pointers, and the fields of `Foo`, namely the two `Int`s, are stored as values.
 
 This is because custom types are considered as "non-primitive" types, and their
 fields are stored as pointers.
+
+Finally, the `delete` function at the end of the `do`-block frees the structure
+recursively, so that we do not (and shouldn't) access the pointer of each fields
+and free them manually.
 
 Built-in tuples, on the other hand, are treated as primitive types, therefore `((1, 2), (3, 4))` is stored in one contiguous block of memory:
 
