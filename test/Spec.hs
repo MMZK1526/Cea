@@ -50,11 +50,13 @@ main = hspec do
       load ptr >>= (`shouldBe` 114.514)
       store ptr 1919.810
       load ptr >>= (`shouldBe` 1919.810)
+      delete ptr
     it "Can make, load, and store Double" do
       ptr <- make (114.514 :: Double)
       load ptr >>= (`shouldBe` 114.514)
       store ptr 1919.810
       load ptr >>= (`shouldBe` 1919.810)
+      delete ptr
     it "Can make, load, and store IntPtr" $ primitiveAssertion @IntPtr
     it "Can make, load, and store WordPtr" $ primitiveAssertion @WordPtr
     it "Can make, load, and store Ptr" $ do
@@ -63,6 +65,7 @@ main = hspec do
       val `shouldBe` nullPtr
       store ptr (val `plusPtr` 114514)
       load ptr >>= (`shouldBe` (nullPtr `plusPtr` 114514))
+      delete ptr
   describe "Native tuple load & store" do
     let val1 = ((1, 1), 4, (5, 1, 4, ()), True, ('9', 810)) :: FancyTuple
     let val2 = ((4, 5), 1, (10, 2, 8, ()), False, ('8', 1919)) :: FancyTuple
@@ -71,6 +74,7 @@ main = hspec do
       load ptr >>= (`shouldBe` val1)
       store ptr val2
       load ptr >>= (`shouldBe` val2)
+      delete ptr
     it "Can access fields in FancyTuple" do
       ptr <- make val1
       loadAt @0 ptr >>= (`shouldBe` (1, 1))
@@ -113,6 +117,7 @@ main = hspec do
       loadsAt @[4, 0] ptr >>= (`shouldBe` '9')
       storesAt @[4, 1] ptr 810
       loadsAt @[4, 1] ptr >>= (`shouldBe` 810)
+      delete ptr
 
 primitiveAssertion :: forall a. (Bounded a, Pointable a, Eq a, Show a) => IO ()
 primitiveAssertion = do
@@ -120,3 +125,4 @@ primitiveAssertion = do
   load ptr >>= (`shouldBe` maxBound)
   store ptr minBound
   load ptr >>= (`shouldBe` minBound)
+  delete ptr
