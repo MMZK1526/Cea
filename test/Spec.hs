@@ -12,6 +12,10 @@ import           Test.Hspec
 type FancyTuple
   = ((Int8, Int16), Int32, (Int64, Float, Double, ()), Bool, (Char, Word64))
 
+newtype MySolo a = MySolo { value1 :: a }
+  deriving (Eq, Show, Generic)
+  deriving Pointable via WithPointable (MySolo a)
+
 data MyTuple a b = MyTuple { value1 :: a, value2 :: b }
   deriving (Eq, Show, Generic)
   deriving Pointable via WithPointable (MyTuple a b)
@@ -26,7 +30,7 @@ data MyQuadruple a b c d
     deriving Pointable via WithPointable (MyQuadruple a b c d)
 
 type CustomTuple = MyTuple (MyQuadruple Int8 Int16 Int32 (MyTuple Char Word8))
-                           (MyTuple (MyTriple Int64 Float Double)
+                           (MyTuple (MyTriple Int64 Float (MySolo Double))
                                     (MyQuadruple () Bool IntPtr WordPtr))
 
 main :: IO ()
@@ -67,7 +71,7 @@ main =
       store ptr (val `plusPtr` 114514)
       load ptr >>= (`shouldBe` (nullPtr `plusPtr` 114514))
       delete ptr
-  describe "Native tuple load & store" do
+  describe "Native tuple load, store, and index selection" do
     let val1 = ((1, 1), 4, (5, 1, 4, ()), True, ('9', 810)) :: FancyTuple
     let val2 = ((4, 5), 1, (10, 2, 8, ()), False, ('8', 1919)) :: FancyTuple
     it "Can make, load, and store FancyTuple" do
@@ -119,11 +123,13 @@ main =
       storesAt @'[4, 1] ptr 810
       loadsAt @'[4, 1] ptr >>= (`shouldBe` 810)
       delete ptr
-  describe "Custom tuple load & store" do
-    let val1 = MyTuple (MyQuadruple 1 1 4 (MyTuple '5' 1))
-                       (MyTuple (MyTriple 5 1 4) (MyQuadruple () True 9 810)) :: CustomTuple
-    let val2 = MyTuple (MyQuadruple 4 5 1 (MyTuple '8' 2))
-                       (MyTuple (MyTriple 10 2 8) (MyQuadruple () False 8 1919)) :: CustomTuple
+  describe "Custom tuple load, store, and index selection" do
+    let val1 = MyTuple ( MyQuadruple 1 1 4 (MyTuple '5' 1) )
+                       ( MyTuple (MyTriple 5 1 (MySolo 4))
+                                 (MyQuadruple () True 9 810) ) :: CustomTuple
+    let val2 = MyTuple ( MyQuadruple 4 5 1 (MyTuple '8' 2) )
+                       ( MyTuple (MyTriple 10 2 (MySolo 8))
+                                 (MyQuadruple () False 8 1919) ) :: CustomTuple
     it "Can make, load, and store CustomTuple" do
       ptr <- make val1
       load ptr >>= (`shouldBe` val1)
@@ -139,7 +145,7 @@ main =
       loadsAt @'[0, 3, 1] ptr >>= (`shouldBe` 1)
       loadsAt @'[1, 0, 0] ptr >>= (`shouldBe` 5)
       loadsAt @'[1, 0, 1] ptr >>= (`shouldBe` 1)
-      loadsAt @'[1, 0, 2] ptr >>= (`shouldBe` 4)
+      loadsAt @'[1, 0, 2, 0] ptr >>= (`shouldBe` 4)
       loadsAt @'[1, 1, 0] ptr >>= (`shouldBe` ())
       loadsAt @'[1, 1, 1] ptr >>= (`shouldBe` True)
       loadsAt @'[1, 1, 2] ptr >>= (`shouldBe` 9)
@@ -160,8 +166,8 @@ main =
       loadsAt @'[1, 0, 0] ptr >>= (`shouldBe` 10)
       storesAt @'[1, 0, 1] ptr 2
       loadsAt @'[1, 0, 1] ptr >>= (`shouldBe` 2)
-      storesAt @'[1, 0, 2] ptr 8
-      loadsAt @'[1, 0, 2] ptr >>= (`shouldBe` 8)
+      storesAt @'[1, 0, 2, 0] ptr 8
+      loadsAt @'[1, 0, 2, 0] ptr >>= (`shouldBe` 8)
       storesAt @'[1, 1, 0] ptr ()
       loadsAt @'[1, 1, 0] ptr >>= (`shouldBe` ())
       storesAt @'[1, 1, 1] ptr False
@@ -172,6 +178,12 @@ main =
       loadsAt @'[1, 1, 3] ptr >>= (`shouldBe` 1919)
       loadsAt @'[] ptr >>= (`shouldBe` val2)
       delete ptr
+  describe "Access by selector name" do
+    it "Can access MySolo" do
+      ptr <- make (MySolo 'c')
+      loadAt @"value1" ptr >>= (`shouldBe` 'c')
+
+
 
 primitiveAssertion :: forall a. (Bounded a, Pointable a, Eq a, Show a) => IO ()
 primitiveAssertion = do
