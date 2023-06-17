@@ -344,7 +344,7 @@ instance Pointable (Ptr a) where
   {-# INLINE store #-}
 
   delete :: Ptr (Ptr a) -> IO ()
-  delete ptr = print 114514 >> free' ptr
+  delete ptr = free' ptr
   {-# INLINE delete #-}
 
 -- We want to know the size of "Char" at compile time, so we will always assume
