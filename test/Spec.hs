@@ -2,6 +2,7 @@
 {-# LANGUAGE DuplicateRecordFields #-}
 
 import           Cea.Pointer
+import           Cea.Pointer.Accessor
 import           Data.Int
 import           Data.Word
 import           Foreign.Ptr
@@ -62,6 +63,56 @@ main = hspec do
       val `shouldBe` nullPtr
       store ptr (val `plusPtr` 114514)
       load ptr >>= (`shouldBe` (nullPtr `plusPtr` 114514))
+  describe "Native tuple load & store" do
+    let val1 = ((1, 1), 4, (5, 1, 4, ()), True, ('9', 810)) :: FancyTuple
+    let val2 = ((4, 5), 1, (10, 2, 8, ()), False, ('8', 1919)) :: FancyTuple
+    it "Can make, load, and store FancyTuple" do
+      ptr <- make val1
+      load ptr >>= (`shouldBe` val1)
+      store ptr val2
+      load ptr >>= (`shouldBe` val2)
+    it "Can access fields in FancyTuple" do
+      ptr <- make val1
+      loadAt @0 ptr >>= (`shouldBe` (1, 1))
+      loadsAt @[0, 0] ptr >>= (`shouldBe` 1)
+      loadsAt @[0, 1] ptr >>= (`shouldBe` 1)
+      loadAt @1 ptr >>= (`shouldBe` 4)
+      loadAt @2 ptr >>= (`shouldBe` (5, 1, 4, ()))
+      loadsAt @[2, 0] ptr >>= (`shouldBe` 5)
+      loadsAt @[2, 1] ptr >>= (`shouldBe` 1)
+      loadsAt @[2, 2] ptr >>= (`shouldBe` 4)
+      loadsAt @[2, 3] ptr >>= (`shouldBe` ())
+      loadAt @3 ptr >>= (`shouldBe` True)
+      loadAt @4 ptr >>= (`shouldBe` ('9', 810))
+      loadsAt @[4, 0] ptr >>= (`shouldBe` '9')
+    it "Can modify fields in FancyTuple" do
+      ptr <- make val1
+      storeAt @0 ptr (4, 5)
+      loadAt @0 ptr >>= (`shouldBe` (4, 5))
+      storeAt @1 ptr 1
+      loadAt @1 ptr >>= (`shouldBe` 1)
+      storeAt @2 ptr (10, 2, 8, ())
+      loadAt @2 ptr >>= (`shouldBe` (10, 2, 8, ()))
+      storeAt @3 ptr False
+      loadAt @3 ptr >>= (`shouldBe` False)
+      storeAt @4 ptr ('8', 1919)
+      loadAt @4 ptr >>= (`shouldBe` ('8', 1919))
+      storesAt @[0, 0] ptr 1
+      loadsAt @[0, 0] ptr >>= (`shouldBe` 1)
+      storesAt @[0, 1] ptr 1
+      loadsAt @[0, 1] ptr >>= (`shouldBe` 1)
+      storesAt @[2, 0] ptr 5
+      loadsAt @[2, 0] ptr >>= (`shouldBe` 5)
+      storesAt @[2, 1] ptr 1
+      loadsAt @[2, 1] ptr >>= (`shouldBe` 1)
+      storesAt @[2, 2] ptr 4
+      loadsAt @[2, 2] ptr >>= (`shouldBe` 4)
+      storesAt @[2, 3] ptr ()
+      loadsAt @[2, 3] ptr >>= (`shouldBe` ())
+      storesAt @[4, 0] ptr '9'
+      loadsAt @[4, 0] ptr >>= (`shouldBe` '9')
+      storesAt @[4, 1] ptr 810
+      loadsAt @[4, 1] ptr >>= (`shouldBe` 810)
 
 primitiveAssertion :: forall a. (Bounded a, Pointable a, Eq a, Show a) => IO ()
 primitiveAssertion = do
