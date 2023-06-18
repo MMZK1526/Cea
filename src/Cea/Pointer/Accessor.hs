@@ -17,8 +17,9 @@ module Cea.Pointer.Accessor
 import           Cea.Pointer
 import           Data.Kind
 import           Data.Proxy
+import           Data.Type.Bool
+import           Data.Type.Ord
 import           Foreign.Ptr
-import           Foreign.Storable
 import           GHC.Generics
 import           GHC.TypeLits
 
@@ -141,7 +142,9 @@ instance ( GPointable (K1 i a)
   => GAccessible 0 (K1 i a) where
     type GAccessor 0 (K1 i a) = ConstAccessor (IsDirect a) (K1 i a)
 
-    gAccess :: Proxy 0 -> Ptr (K1 @Type i a p) -> IO (Ptr (GAccessor 0 (K1 i a)))
+    gAccess :: Proxy 0
+            -> Ptr (K1 @Type i a p)
+            -> IO (Ptr (GAccessor 0 (K1 i a)))
     gAccess _ = constAccess (Proxy :: Proxy f)
     {-# INLINE gAccess #-}
 
@@ -166,12 +169,13 @@ instance (GAccessible (ix :: Symbol) a) => GAccessible ix (C1 c a) where
   gAccess ix p = gAccess ix (castPtr p :: Ptr (a p))
   {-# INLINE gAccess #-}
 
-instance (GAccessible (ix :: Symbol) a) => GAccessible ix (S1 ('MetaSel ('Just ix) su ss ds) a) where
-  type GAccessor ix (S1 ('MetaSel ('Just ix) su ss ds) a) = GAccessor ix a
+instance (GAccessible (ix :: Symbol) a)
+  => GAccessible ix (S1 ('MetaSel ('Just ix) su ss ds) a) where
+    type GAccessor ix (S1 ('MetaSel ('Just ix) su ss ds) a) = GAccessor ix a
 
-  gAccess :: Proxy ix -> Ptr (M1 i c a p) -> IO (Ptr (GAccessor ix (D1 c a)))
-  gAccess ix p = gAccess ix (castPtr p :: Ptr (a p))
-  {-# INLINE gAccess #-}
+    gAccess :: Proxy ix -> Ptr (M1 i c a p) -> IO (Ptr (GAccessor ix (D1 c a)))
+    gAccess ix p = gAccess ix (castPtr p :: Ptr (a p))
+    {-# INLINE gAccess #-}
 
 instance ( GPointable (K1 i a)
          , ConstAccess f (K1 @Type i a)
@@ -185,8 +189,8 @@ instance ( GPointable (K1 i a)
     gAccess _ = gAccess (Proxy :: Proxy 0)
     {-# INLINE gAccess #-}
 
-instance ( ProductAccess f ix (a :*: b)
-         , LessThan ix (GLength a) ~ f, GHasLength a )
+instance ( ProductAccess f (ix :: Nat) (a :*: b)
+         , LessThan ix (GLength a) ~ f )
   => GAccessible ix (a :*: b) where
     type GAccessor ix (a :*: b) =
       ProductAccessor (LessThan ix (GLength a)) ix (a :*: b)
@@ -195,6 +199,22 @@ instance ( ProductAccess f ix (a :*: b)
             -> IO (Ptr (GAccessor ix (a :*: b)))
     gAccess = productAccess (Proxy :: Proxy f)
     {-# INLINE gAccess #-}
+
+instance ( ProductAccess f (ix :: Symbol) (a :*: b)
+         , HasField ix a ~ f )
+  => GAccessible ix (a :*: b) where
+    type GAccessor ix (a :*: b) =
+      ProductAccessor (HasField ix a) ix (a :*: b)
+
+    gAccess :: Proxy ix -> Ptr ((a :*: b) p)
+            -> IO (Ptr (GAccessor ix (a :*: b)))
+    gAccess = productAccess (Proxy :: Proxy f)
+    {-# INLINE gAccess #-}
+
+
+--------------------------------------------------------------------------------
+-- Accessibles
+--------------------------------------------------------------------------------
 
 class Accessibles (ixs :: [k]) a where
   type Accessors ixs a
@@ -237,11 +257,38 @@ instance (GHasLength a, GHasLength b) => GHasLength (a :*: b) where
 
 
 --------------------------------------------------------------------------------
+-- GHasField
+--------------------------------------------------------------------------------
+
+class GHasField (ix :: Symbol) (a :: Type -> Type) where
+  type HasField ix a :: Bool
+
+instance (GHasField ix a) => GHasField ix (D1 c a) where
+  type HasField ix (D1 c a) = HasField ix a
+
+instance (GHasField ix a) => GHasField ix (C1 c a) where
+  type HasField ix (C1 c a) = HasField ix a
+
+instance GHasField ix (S1 ('MetaSel Nothing su ss ds) a) where
+  type HasField ix (S1 ('MetaSel Nothing su ss ds) a) = 'False
+
+instance GHasField ix (S1 ('MetaSel (Just ix') su ss ds) a) where
+  type HasField ix (S1 ('MetaSel (Just ix') su ss ds) a) = Same ix ix'
+
+instance (GHasField ix a, GHasField ix b) => GHasField ix (a :*: b) where
+  type HasField ix (a :*: b) = HasField ix a || HasField ix b
+
+
+--------------------------------------------------------------------------------
 -- Helper Types
 --------------------------------------------------------------------------------
 
+type family Same (s :: Symbol) (s' :: Symbol) :: Bool where
+  Same s s = 'True
+  Same _ _ = 'False
+
 type family LessThan (n :: Nat) (n' :: Nat) :: Bool where
-  LessThan n n' = IsLessThan (CmpNat n n')
+  LessThan n n' = IsLessThan (Compare n n')
 
 type family IsLessThan (o :: Ordering) :: Bool where
   IsLessThan 'LT = 'True
@@ -272,13 +319,13 @@ instance ConstAccess 'False (K1 i a) where
   constAccess _ = load . castPtr
   {-# INLINE constAccess #-}
 
-class ProductAccess (f :: Bool) (ix :: Nat)  (a :: Type -> Type) where
+class ProductAccess (f :: Bool) ix (a :: Type -> Type) where
   type ProductAccessor f ix a
 
   productAccess :: Proxy f -> Proxy ix -> Ptr (a p)
                 -> IO (Ptr (ProductAccessor f ix a))
 
-instance (GAccessible ix a) => ProductAccess 'True ix (a :*: b) where
+instance (GAccessible (ix :: Nat) a) => ProductAccess 'True ix (a :*: b) where
   type ProductAccessor 'True ix (a :*: b) = GAccessor ix a
 
   productAccess :: Proxy 'True -> Proxy ix -> Ptr ((a :*: b) p)
@@ -286,7 +333,7 @@ instance (GAccessible ix a) => ProductAccess 'True ix (a :*: b) where
   productAccess _ ix p = gAccess ix (castPtr p :: Ptr (a p))
   {-# INLINE productAccess #-}
 
-instance ( GAccessible ix b
+instance ( GAccessible (ix :: Nat) b
          , KnownNat (ToNat (SLSize f a))
          , ix ~ ix' - GLength a, GIsPrim a ~ f
          , HasSLSize f a )
@@ -295,6 +342,28 @@ instance ( GAccessible ix b
 
     productAccess :: Proxy 'False -> Proxy ix' -> Ptr ((a :*: b) p)
                   -> IO (Ptr (ProductAccessor 'False ix' (a :*: b)))
+    productAccess _ ix p = gAccess (Proxy :: Proxy ix)
+      ((castPtr p `plusPtr` slSize (Proxy @f) (Proxy @a)) :: Ptr (b p))
+    {-# INLINE productAccess #-}
+
+instance (GAccessible (ix :: Symbol) a)
+  => ProductAccess 'True ix (a :*: b) where
+    type ProductAccessor 'True ix (a :*: b) = GAccessor ix a
+
+    productAccess :: Proxy 'True -> Proxy ix -> Ptr ((a :*: b) p)
+                  -> IO (Ptr (ProductAccessor 'True ix (a :*: b)))
+    productAccess _ ix p = gAccess ix (castPtr p :: Ptr (a p))
+    {-# INLINE productAccess #-}
+
+instance ( GAccessible (ix :: Symbol) b
+         , KnownNat (ToNat (SLSize f a))
+         , GIsPrim a ~ f
+         , HasSLSize f a )
+  => ProductAccess 'False ix (a :*: b) where
+    type ProductAccessor 'False ix (a :*: b) = GAccessor ix b
+
+    productAccess :: Proxy 'False -> Proxy ix -> Ptr ((a :*: b) p)
+                  -> IO (Ptr (ProductAccessor 'False ix (a :*: b)))
     productAccess _ ix p = gAccess (Proxy :: Proxy ix)
       ((castPtr p `plusPtr` slSize (Proxy @f) (Proxy @a)) :: Ptr (b p))
     {-# INLINE productAccess #-}
