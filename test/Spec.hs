@@ -150,40 +150,65 @@ main =
       loadsAt @'[1, 1, 1] ptr >>= (`shouldBe` True)
       loadsAt @'[1, 1, 2] ptr >>= (`shouldBe` 9)
       loadsAt @'[1, 1, 3] ptr >>= (`shouldBe` 810)
+      delete ptr
     it "Can modify fields in CustomTuple" do
       ptr <- make val1
       storesAt @'[0, 0] ptr 4
-      loadsAt @'[0, 0] ptr >>= (`shouldBe` 4)
       storesAt @'[0, 1] ptr 5
-      loadsAt @'[0, 1] ptr >>= (`shouldBe` 5)
       storesAt @'[0, 2] ptr 1
-      loadsAt @'[0, 2] ptr >>= (`shouldBe` 1)
       storesAt @'[0, 3, 0] ptr '8'
-      loadsAt @'[0, 3, 0] ptr >>= (`shouldBe` '8')
       storesAt @'[0, 3, 1] ptr 2
-      loadsAt @'[0, 3, 1] ptr >>= (`shouldBe` 2)
       storesAt @'[1, 0, 0] ptr 10
-      loadsAt @'[1, 0, 0] ptr >>= (`shouldBe` 10)
       storesAt @'[1, 0, 1] ptr 2
-      loadsAt @'[1, 0, 1] ptr >>= (`shouldBe` 2)
       storesAt @'[1, 0, 2, 0] ptr 8
-      loadsAt @'[1, 0, 2, 0] ptr >>= (`shouldBe` 8)
       storesAt @'[1, 1, 0] ptr ()
-      loadsAt @'[1, 1, 0] ptr >>= (`shouldBe` ())
       storesAt @'[1, 1, 1] ptr False
-      loadsAt @'[1, 1, 1] ptr >>= (`shouldBe` False)
       storesAt @'[1, 1, 2] ptr 8
-      loadsAt @'[1, 1, 2] ptr >>= (`shouldBe` 8)
       storesAt @'[1, 1, 3] ptr 1919
-      loadsAt @'[1, 1, 3] ptr >>= (`shouldBe` 1919)
       loadsAt @'[] ptr >>= (`shouldBe` val2)
       delete ptr
   describe "Access by selector name" do
+    let val1 = MyTuple ( MyQuadruple 1 1 4 (MyTuple '5' 1) )
+                       ( MyTuple (MyTriple 5 1 (MySolo 4))
+                                 (MyQuadruple () True 9 810) ) :: CustomTuple
+    let val2 = MyTuple ( MyQuadruple 4 5 1 (MyTuple '8' 2) )
+                       ( MyTuple (MyTriple 10 2 (MySolo 8))
+                                 (MyQuadruple () False 8 1919) ) :: CustomTuple
     it "Can access MySolo" do
       ptr <- make (MySolo 'c')
       loadAt @"value1" ptr >>= (`shouldBe` 'c')
-
-
+      storeAt @"value1" ptr 'd'
+      loadAt @"value1" ptr >>= (`shouldBe` 'd')
+    it "Can access fields in CustomTuple" do
+      ptr <- make val1
+      loadsAt @'["value1", "value1"] ptr >>= (`shouldBe` 1)
+      loadsAt @'["value1", "value2"] ptr >>= (`shouldBe` 1)
+      loadsAt @'["value1", "value3"] ptr >>= (`shouldBe` 4)
+      loadsAt @'["value1", "value4", "value1"] ptr >>= (`shouldBe` '5')
+      loadsAt @'["value1", "value4", "value2"] ptr >>= (`shouldBe` 1)
+      loadsAt @'["value2", "value1", "value1"] ptr >>= (`shouldBe` 5)
+      loadsAt @'["value2", "value1", "value2"] ptr >>= (`shouldBe` 1)
+      loadsAt @'["value2", "value1", "value3", "value1"] ptr >>= (`shouldBe` 4)
+      loadsAt @'["value2", "value2", "value1"] ptr >>= (`shouldBe` ())
+      loadsAt @'["value2", "value2", "value2"] ptr >>= (`shouldBe` True)
+      loadsAt @'["value2", "value2", "value3"] ptr >>= (`shouldBe` 9)
+      loadsAt @'["value2", "value2", "value4"] ptr >>= (`shouldBe` 810)
+    it "Can modify fields in CustomTuple" do
+      ptr <- make val1
+      storesAt @'["value1", "value1"] ptr 4
+      storesAt @'["value1", "value2"] ptr 5
+      storesAt @'["value1", "value3"] ptr 1
+      storesAt @'["value1", "value4", "value1"] ptr '8'
+      storesAt @'["value1", "value4", "value2"] ptr 2
+      storesAt @'["value2", "value1", "value1"] ptr 10
+      storesAt @'["value2", "value1", "value2"] ptr 2
+      storesAt @'["value2", "value1", "value3", "value1"] ptr 8
+      storesAt @'["value2", "value2", "value1"] ptr ()
+      storesAt @'["value2", "value2", "value2"] ptr False
+      storesAt @'["value2", "value2", "value3"] ptr 8
+      storesAt @'["value2", "value2", "value4"] ptr 1919
+      loadsAt @'[] ptr >>= (`shouldBe` val2)
+      delete ptr
 
 primitiveAssertion :: forall a. (Bounded a, Pointable a, Eq a, Show a) => IO ()
 primitiveAssertion = do
