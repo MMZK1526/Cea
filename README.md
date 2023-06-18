@@ -106,6 +106,7 @@ main = do
   let ptr' = castPtr ptr :: Ptr (Int, Int, Int, Int)
   val' <- load ptr'
   print val' -- (1, 2, 3, 4)
+  delete ptr
 ```
 
 Note that we does not support deriving `Pointable` for sum types yet.
@@ -120,6 +121,7 @@ main = do
   ptr          <- make ((0, 0, 0, 0) :: (Int, Int, Int, Int))
   (a, b, c, d) <- load ptr
   store ptr (a + 1, b, c, d)
+  delete ptr
 ```
 
 This is not only tedious to write, but also introduces extra overhead since we need to read the whole tuple, modify it, and write it back.
@@ -135,6 +137,7 @@ main = do
   store ptr0 1
   val  <- load ptr
   print val -- (1, 0, 0, 0)
+  delete ptr
 ```
 
 The type application `@n` specifies the `n`-th field. Note that the index starts from 0.
@@ -150,6 +153,7 @@ main = do
   print val -- (1, 0, 0, 0)
   val0 <- loadAt @0 ptr
   print val0 -- 1
+  delete ptr
 ```
 
 If the fields has nested fields, we can use `accesses` to acquire a pointer that points to the nested field:
@@ -157,13 +161,30 @@ If the fields has nested fields, we can use `accesses` to acquire a pointer that
 ```Haskell
 main :: IO ()
 main = do
-  ptr  <- make (((0, 1), (2, 3)) :: (Int, Int, Int, Int))
+  ptr  <- make (((0, 1), (2, 3)) :: ((Int, Int), (Int, Int)))
   ptr0 <- accesses @[0, 0] ptr
   store ptr0 114
   val  <- load ptr
   print val -- ((114, 1), (2, 3))
+  delete ptr
 ```
 
 The type application `@[n1, n2, ...]` specifies the path to the nested field, namely the n1-th field's n2-th field's ... n-th field. Again the indices start from 0. In particular `accesses @[] ptr` is the same as the orginal poinrter `ptr`.
 
 Similarly, we have the shorthand functions `loadsAt` and `storesAt`.
+
+If we are using a custom data type with selector names, we can also use the selector names themselves to access the fields:
+
+```Haskell
+data Foo = Foo { foo1 :: Int, foo2 :: Int }
+  deriving (Generic, Show)
+  deriving (Pointable) via WithPointable Foo
+
+main :: IO ()
+main = do
+  ptr  <- make (Foo 0 0)
+  storeAt @"foo1" ptr 1
+  val  <- load ptr
+  print val -- Foo {foo1 = 1, foo2 = 0}
+  delete ptr
+```
