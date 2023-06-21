@@ -29,7 +29,7 @@ type family Lookup (sym :: Symbol)
                    (ps :: [Symbol])
                    (ds :: [Symbol])
                    (cur :: Symbol)
-                   (n :: Nat) :: Nat where
+                   (n :: Nat) :: Maybe Nat where
   Lookup sym (p ': p' ': ps) ds cur n
     = Lookup2 (Compare p sym) (Compare p' sym) sym p (p' ': ps) ds cur n
   Lookup sym '[d] _ cur n
@@ -49,13 +49,17 @@ type family Lookup2 (ol :: Ordering)
                     (ps :: [Symbol])
                     (ds :: [Symbol])
                     (cur :: Symbol)
-                    (n :: Nat) :: Nat where
-  Lookup2 'EQ _ _ _ _ (d' ': _) _ n       = 10 * n + Digit2Nat d'
+                    (n :: Nat) :: Maybe Nat where
+  Lookup2 'EQ _ _ _ _ (d' ': _) _ n       = 'Just (10 * n + Digit2Nat d')
   Lookup2 'LT 'GT sym d _ (d' ': _) cur n
     = Lookup sym (PrependDigits d DigitLits) DigitLits d (10 * n + Digit2Nat d')
   Lookup2 'LT _ sym _ ps (_ ': ds) cur n  = Lookup sym ps ds cur n
+  Lookup2 _ _ _ _ _ _ _ _                 = 'Nothing
 
 type H sym = Lookup sym DigitLits DigitLits "" 0
 
-foo :: Proxy (H "12345")
-foo = Proxy
+t12345 :: Proxy (H "12345")
+t12345 = Proxy
+
+tabc :: Proxy (H "abc")
+tabc = Proxy
