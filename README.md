@@ -8,7 +8,7 @@ A second way relies on Haskell's Foreign Function Interface (FFI), where we can 
 
 The library `cea` is an attempt to provide a safe, high-level interface to C pointers. It can derive `Pointable` instances for most custom data types, and provides a variety of accessor functions that allows one to modify a certain field of a data structure without reading the whole data structure. All the type guarantees are checked at compile time, introducing minimum overhead over raw pointers.
 
-Currently, it is still a prototype that can only handle non-recursive product types, but in the future I will extend it to support sum types and arrays to make it more useful.
+Currently, it is still a prototype that can only handle non-recursive product types and arrays, but in the future I will extend it to support sum types to make it more useful.
 
 ## Example
 TODO

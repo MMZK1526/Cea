@@ -20,7 +20,8 @@ test-suite cea-test
         Cea.Array,
         Cea.Pointer,
         Cea.Pointer.Accessor,
-        Cea.Pointer.Unsafe
+        Cea.Pointer.Unsafe,
+        Cea.Utils.Symbol2Nat
     default-extensions:
         BlockArguments,
         DataKinds,
@@ -59,7 +60,8 @@ executable cea
         Cea.Array,
         Cea.Pointer,
         Cea.Pointer.Accessor,
-        Cea.Pointer.Unsafe
+        Cea.Pointer.Unsafe,
+        Cea.Utils.Symbol2Nat
     default-extensions:
         BlockArguments,
         DataKinds,
@@ -73,6 +75,7 @@ executable cea
         InstanceSigs,
         KindSignatures,
         GeneralizedNewtypeDeriving,
+        NoStarIsType,
         RankNTypes,
         ScopedTypeVariables,
         TypeApplications,
@@ -95,7 +98,8 @@ library
         Cea.Pointer,
         Cea.Pointer.Accessor,
         Cea.Pointer.Unsafe
-    -- other-modules:
+    other-modules:
+        Cea.Utils.Symbol2Nat
     default-extensions:
         BlockArguments,
         DataKinds,
@@ -109,6 +113,7 @@ library
         InstanceSigs,
         KindSignatures,
         GeneralizedNewtypeDeriving,
+        NoStarIsType,
         RankNTypes,
         ScopedTypeVariables,
         TypeApplications,

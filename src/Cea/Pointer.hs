@@ -803,7 +803,7 @@ instance ( Val (GSizeOf (a :*: b))
 -- be always the pointer size, i.e. 8 bytes. For direct fields, it should be
 -- the size of the field.
 class (Val (SLSize f a), GPointable a)
-  => HasSLSize (f :: Bool) (a :: * -> *) where
+  => HasSLSize (f :: Bool) (a :: Type -> Type) where
     type SLSize f a :: MyNat
 
     slSize :: Proxy f -> Proxy a -> Int
