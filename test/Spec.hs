@@ -1,6 +1,7 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE DuplicateRecordFields #-}
 
+import           Cea.Array
 import           Cea.Pointer
 import           Cea.Pointer.Accessor
 import           Data.Int
@@ -123,6 +124,20 @@ main =
       storesAt @'[4, 1] ptr 810
       loadsAt @'[4, 1] ptr >>= (`shouldBe` 810)
       delete ptr
+  describe "Primitive array lifecycle" do
+    it "Can make, read from, and write to IntArray with compile-time length" do
+      arr  <- makeArr @3 (-1 :: Int)
+      list <- loadArrToList arr
+      list `shouldBe` replicate 3 (-1)
+      e0   <- readArr' @0 arr
+      e1   <- readArr' @1 arr
+      e2   <- readArr' @2 arr
+      list `shouldBe` [e0, e1, e2]
+      writeArr' @0 arr 0
+      writeArr' @1 arr 1
+      writeArr' @2 arr 2
+      loadArrToList arr >>= (`shouldBe` [0, 1, 2])
+      deleteArr arr
   describe "Custom tuple load, store, and index selection" do
     let val1 = MyTuple ( MyQuadruple 1 1 4 (MyTuple '5' 1) )
                        ( MyTuple (MyTriple 5 1 (MySolo 4))
@@ -167,7 +182,7 @@ main =
       storesAt @'[1, 1, 3] ptr 1919
       loadsAt @'[] ptr >>= (`shouldBe` val2)
       delete ptr
-  describe "Access by selector name" do
+  describe "Access product types by selector name" do
     let val1 = MyTuple ( MyQuadruple 1 1 4 (MyTuple '5' 1) )
                        ( MyTuple (MyTriple 5 1 (MySolo 4))
                                  (MyQuadruple () True 9 810) ) :: CustomTuple
