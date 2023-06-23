@@ -1,20 +1,33 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
 
-module Cea.Array where
+module Cea.Array
+  ( ArrayOf
+  , makeArr
+  , makeArrFromList
+  , loadArr
+  , loadArrToList
+  , deleteArr
+  , eraseLen
+  , readArr
+  , writeArr
+  , readArr'
+  , writeArr'
+  , arrLen
+  ) where
 
 import           Control.Monad
 import           Cea.Pointer
 import           Data.Array
 import           Data.Array.IO
 import           Data.Foldable
+import           Data.Kind
 import           Data.Proxy
 import           Foreign.Marshal
 import           Foreign.Ptr
 import           Foreign.Storable
 import           GHC.TypeNats
 
-newtype ArrayOf (n :: Maybe Nat) a = ArrayOf a
-  deriving (Eq, Ord, Show)
+data ArrayOf (n :: Maybe Nat) (a :: Type)
 
 -- | Make an array of size @n@ with all elements filled with @x@.
 makeArr :: forall n e t
@@ -94,23 +107,31 @@ eraseLen :: Ptr (ArrayOf ('Just n) a) -> Ptr (ArrayOf 'Nothing a)
 eraseLen = castPtr
 {-# INLINE eraseLen #-}
 
+readArr :: ArrayPointable Int a e => Int -> a -> IO e
+readArr = readArr_
+{-# INLINE readArr #-}
+
+writeArr :: ArrayPointable Int a e => Int -> a -> e -> IO ()
+writeArr = writeArr_
+{-# INLINE writeArr #-}
+
 readArr' :: forall (n :: Nat) a e
           . ArrayPointable (Proxy n) a e
          => a -> IO e
-readArr' = readArr (Proxy @n)
+readArr' = readArr_ (Proxy @n)
 
 writeArr' :: forall (n :: Nat) a e
            . ArrayPointable (Proxy n) a e
           => a -> e -> IO ()
-writeArr' = writeArr (Proxy @n)
+writeArr' = writeArr_ (Proxy @n)
 
 class ArrayLen a where
   arrLen :: a -> IO Int
 
 class ArrayLen a => ArrayPointable n a e | n a -> e where
-  readArr :: n -> a -> IO e
+  readArr_ :: n -> a -> IO e
 
-  writeArr :: n -> a -> e -> IO ()
+  writeArr_ :: n -> a -> e -> IO ()
 
 instance KnownNat n => ArrayLen (Ptr (ArrayOf ('Just n) e)) where
   arrLen :: Ptr (ArrayOf ('Just n) e) -> IO Int
@@ -124,64 +145,40 @@ instance ArrayLen (Ptr (ArrayOf 'Nothing e)) where
 
 instance (KnownNat n, Pointable e)
   => ArrayPointable Int (Ptr (ArrayOf ('Just n) e)) e where
-    readArr :: Int -> Ptr (ArrayOf ('Just n) e) -> IO e
-    readArr = readArrInt
-    {-# INLINE readArr #-}
+    readArr_ :: Int -> Ptr (ArrayOf ('Just n) e) -> IO e
+    readArr_ = readArrInt
+    {-# INLINE readArr_ #-}
 
-    writeArr :: Int -> Ptr (ArrayOf ('Just n) e) -> e -> IO ()
-    writeArr = writeArrInt
-    {-# INLINE writeArr #-}
+    writeArr_ :: Int -> Ptr (ArrayOf ('Just n) e) -> e -> IO ()
+    writeArr_ = writeArrInt
+    {-# INLINE writeArr_ #-}
 
 instance Pointable e => ArrayPointable Int (Ptr (ArrayOf 'Nothing e)) e where
-  readArr :: Int -> Ptr (ArrayOf 'Nothing e) -> IO e
-  readArr = readArrInt
-  {-# INLINE readArr #-}
+  readArr_ :: Int -> Ptr (ArrayOf 'Nothing e) -> IO e
+  readArr_ = readArrInt
+  {-# INLINE readArr_ #-}
 
-  writeArr :: Int -> Ptr (ArrayOf 'Nothing e) -> e -> IO ()
-  writeArr = writeArrInt
-  {-# INLINE writeArr #-}
+  writeArr_ :: Int -> Ptr (ArrayOf 'Nothing e) -> e -> IO ()
+  writeArr_ = writeArrInt
+  {-# INLINE writeArr_ #-}
 
 instance (KnownNat n, KnownNat n', Pointable e, CmpNat n n' ~ 'LT)
   => ArrayPointable (Proxy n) (Ptr (ArrayOf (Just n') e)) e where
-    readArr :: Proxy n -> Ptr (ArrayOf (Just n') e) -> IO e
-    readArr _ ptr = do
+    readArr_ :: Proxy n -> Ptr (ArrayOf (Just n') e) -> IO e
+    readArr_ _ ptr = do
       len <- arrLen ptr
       let ix = fromIntegral $ natVal (Proxy @n)
       let elemSize = fromIntegral $ val (Proxy @(SizeOf e))
       load (ptr `plusPtr` ptrSize `plusPtr` (ix * elemSize))
-    {-# INLINE readArr #-}
+    {-# INLINE readArr_ #-}
 
-    writeArr :: Proxy n -> Ptr (ArrayOf (Just n') e) -> e -> IO ()
-    writeArr _ ptr e = do
+    writeArr_ :: Proxy n -> Ptr (ArrayOf (Just n') e) -> e -> IO ()
+    writeArr_ _ ptr e = do
       len <- arrLen ptr
       let ix = fromIntegral $ natVal (Proxy @n)
       let elemSize = fromIntegral $ val (Proxy @(SizeOf e))
       store (ptr `plusPtr` ptrSize `plusPtr` (ix * elemSize)) e
-    {-# INLINE writeArr #-}
-
-instance (KnownNat n, Pointable e)
-  => ArrayPointable (Proxy n) (Ptr (ArrayOf 'Nothing e)) e where
-    readArr :: Proxy n -> Ptr (ArrayOf 'Nothing e) -> IO e
-    readArr _ ptr = do
-      len <- arrLen ptr
-      let ix = fromIntegral $ natVal (Proxy @n)
-      if ix >= len || ix < 0
-        then error "readArr: Index out of bound"
-        else do
-          let elemSize = fromIntegral $ val (Proxy @(SizeOf e))
-          load (ptr `plusPtr` ptrSize `plusPtr` (ix * elemSize))
-    {-# INLINE readArr #-}
-
-    writeArr :: Proxy n -> Ptr (ArrayOf 'Nothing e) -> e -> IO ()
-    writeArr _ ptr e = do
-      len <- arrLen ptr
-      let ix = fromIntegral $ natVal (Proxy @n)
-      if ix >= len || ix < 0
-        then error "writeArr: Index out of bound"
-        else do
-          let elemSize = fromIntegral $ val (Proxy @(SizeOf e))
-          store (ptr `plusPtr` ptrSize `plusPtr` (ix * elemSize)) e
-    {-# INLINE writeArr #-}
+    {-# INLINE writeArr_ #-}
 
 readArrInt :: forall e p
            . ( ArrayLen (Ptr (ArrayOf p e))
