@@ -120,6 +120,7 @@ demoArray = do
   putStrLn "-- Load the array into a list"
   xs <- loadArrToList intArr
   putStrLn $ "The content of the array is " ++ show xs
+  deleteArr intArr
 
 data IntTuple = IntTuple Int Int
   deriving stock (Eq, Ord, Show, Generic)
@@ -151,11 +152,11 @@ fibCea n = do
 
 main :: IO ()
 main = do
-  -- let n = 10000
-  -- defaultMain
-  --   [ bench "fib" $ whnf fib n
-  --   , bench "fibCea" $ whnfAppIO fibCea n ]
+  let n = 10000
+  defaultMain
+    [ bench "fib" $ whnf fib n
+    , bench "fibCea" $ whnfAppIO fibCea n ]
   -- demoPrimitive >> putStrLn ""
-  demoNestedTuples >> putStrLn ""
+  -- demoNestedTuples >> putStrLn ""
   -- demoBuiltinTuples >> putStrLn ""
   -- demoArray >> putStrLn ""

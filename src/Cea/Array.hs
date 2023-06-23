@@ -65,6 +65,17 @@ loadArrToList ptr = do
   let arr = ptr `plusPtr` ptrSize
   forM [0..(len - 1)] $ \ix -> load (arr `plusPtr` (ix * elemSize))
 
+deleteArr :: forall e p
+           . ( ArrayLen (Ptr (ArrayOf p e))
+             , Pointable e )
+        => Ptr (ArrayOf p e) -> IO ()
+deleteArr ptr = do
+  len <- arrLen ptr
+  let elemSize = fromIntegral $ val (Proxy @(SizeOf e))
+  let arr = castPtr ptr `plusPtr` ptrSize
+  forM_ [0..(len - 1)] $ \ix -> deleteInner @e (arr `plusPtr` (ix * elemSize))
+  free ptr
+
 eraseLen :: Ptr (ArrayOf ('Just n) a) -> Ptr (ArrayOf 'Nothing a)
 eraseLen = castPtr
 {-# INLINE eraseLen #-}
