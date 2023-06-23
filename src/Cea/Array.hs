@@ -1,3 +1,5 @@
+{-# LANGUAGE AllowAmbiguousTypes #-}
+
 module Cea.Array where
 
 import           Control.Monad
@@ -14,6 +16,7 @@ import           GHC.TypeNats
 newtype ArrayOf (n :: Maybe Nat) a = ArrayOf a
   deriving (Eq, Ord, Show)
 
+-- | Make an array of size @n@ with all elements filled with @x@.
 makeArr :: forall n e t
          . ( KnownNat n
            , Pointable e )
@@ -27,6 +30,10 @@ makeArr x = do
   forM_ [0..(len - 1)] \ix -> store (arr `plusPtr` (ix * elemSize)) x
   pure ptr
 
+-- | Make an array pointer from the given list or @Foldable@ instance.
+--
+-- Since the length of the list is in general unknown at compile time, so is
+-- the length of the array.
 makeArrFromList :: forall e t
                  . ( Pointable e
                    , Foldable t )
@@ -41,6 +48,7 @@ makeArrFromList xs = do
   zipWithM_ store (map (arr `plusPtr`) [0, elemSize..]) xs'
   pure ptr
 
+-- | Load the array pointer into an immutable array.
 loadArr :: forall e p
          . ( ArrayLen (Ptr (ArrayOf p e))
            , Pointable e )
@@ -55,6 +63,7 @@ loadArr ptr = do
     writeArray arrIO ix val
   freeze arrIO
 
+-- | Load the array pointer into a list.
 loadArrToList :: forall e p
                . ( ArrayLen (Ptr (ArrayOf p e))
                  , Pointable e )
@@ -65,6 +74,10 @@ loadArrToList ptr = do
   let arr = ptr `plusPtr` ptrSize
   forM [0..(len - 1)] $ \ix -> load (arr `plusPtr` (ix * elemSize))
 
+-- | Free the array pointer, recursively freeing all its elements.
+--
+-- It is assumed that all elements of the array "belongs" to the array, in other
+-- words, their lifecycles are tied with the array and not managed elsewhere.
 deleteArr :: forall e p
            . ( ArrayLen (Ptr (ArrayOf p e))
              , Pointable e )
@@ -76,9 +89,20 @@ deleteArr ptr = do
   forM_ [0..(len - 1)] $ \ix -> deleteInner @e (arr `plusPtr` (ix * elemSize))
   free ptr
 
+-- | Erase the complie-time length of the array pointer.
 eraseLen :: Ptr (ArrayOf ('Just n) a) -> Ptr (ArrayOf 'Nothing a)
 eraseLen = castPtr
 {-# INLINE eraseLen #-}
+
+readArr' :: forall (n :: Nat) a e
+          . ArrayPointable (Proxy n) a e
+         => a -> IO e
+readArr' = readArr (Proxy @n)
+
+writeArr' :: forall (n :: Nat) a e
+           . ArrayPointable (Proxy n) a e
+          => a -> e -> IO ()
+writeArr' = writeArr (Proxy @n)
 
 class ArrayLen a where
   arrLen :: a -> IO Int
