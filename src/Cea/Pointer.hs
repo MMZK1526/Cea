@@ -52,8 +52,18 @@ class (Val (SizeOf a), KnownBool (IsDirect a)) => Pointable a where
   size :: a -> Int
   size _ = fromIntegral $ val (Proxy :: Proxy (SizeOf a))
 
-  -- | Create a new pointer and store the value in it.
+  -- | Create a new pointer and store the value in it, creating pointers for
+  -- the fields if necessary.
   make :: a -> IO (Ptr a)
+  make a = do
+    ptr <- mallocBytes (size a)
+    makeInner ptr a
+    pure $ castPtr ptr
+  {-# INLINE make #-}
+
+  -- | Store the value in the given pointer, creating pointers for the fields
+  -- if necessary.
+  makeInner :: Ptr a -> a -> IO ()
 
   -- | Load the value from the pointer.
   load :: Ptr a -> IO a
@@ -76,9 +86,9 @@ instance Pointable Int8 where
 
   type IsDirect Int8 = 'True
 
-  make :: Int8 -> IO (Ptr Int8)
-  make = new
-  {-# INLINE make #-}
+  makeInner :: Ptr Int8 -> Int8 -> IO ()
+  makeInner = store
+  {-# INLINE makeInner #-}
 
   load :: Ptr Int8 -> IO Int8
   load = peek
@@ -97,9 +107,9 @@ instance Pointable Int16 where
 
   type IsDirect Int16 = 'True
 
-  make :: Int16 -> IO (Ptr Int16)
-  make = new
-  {-# INLINE make #-}
+  makeInner :: Ptr Int16 -> Int16 -> IO ()
+  makeInner = store
+  {-# INLINE makeInner #-}
 
   load :: Ptr Int16 -> IO Int16
   load = peek
@@ -118,9 +128,9 @@ instance Pointable Int32 where
 
   type IsDirect Int32 = 'True
 
-  make :: Int32 -> IO (Ptr Int32)
-  make = new
-  {-# INLINE make #-}
+  makeInner :: Ptr Int32 -> Int32 -> IO ()
+  makeInner = store
+  {-# INLINE makeInner #-}
 
   load :: Ptr Int32 -> IO Int32
   load = peek
@@ -139,9 +149,9 @@ instance Pointable Int64 where
 
   type IsDirect Int64 = 'True
 
-  make :: Int64 -> IO (Ptr Int64)
-  make = new
-  {-# INLINE make #-}
+  makeInner :: Ptr Int64 -> Int64 -> IO ()
+  makeInner = store
+  {-# INLINE makeInner #-}
 
   load :: Ptr Int64 -> IO Int64
   load = peek
@@ -160,9 +170,9 @@ instance Pointable Word8 where
 
   type IsDirect Word8 = 'True
 
-  make :: Word8 -> IO (Ptr Word8)
-  make = new
-  {-# INLINE make #-}
+  makeInner :: Ptr Word8 -> Word8 -> IO ()
+  makeInner = store
+  {-# INLINE makeInner #-}
 
   load :: Ptr Word8 -> IO Word8
   load = peek
@@ -181,9 +191,9 @@ instance Pointable Word16 where
 
   type IsDirect Word16 = 'True
 
-  make :: Word16 -> IO (Ptr Word16)
-  make = new
-  {-# INLINE make #-}
+  makeInner :: Ptr Word16 -> Word16 -> IO ()
+  makeInner = store
+  {-# INLINE makeInner #-}
 
   load :: Ptr Word16 -> IO Word16
   load = peek
@@ -202,9 +212,9 @@ instance Pointable Word32 where
 
   type IsDirect Word32 = 'True
 
-  make :: Word32 -> IO (Ptr Word32)
-  make = new
-  {-# INLINE make #-}
+  makeInner :: Ptr Word32 -> Word32 -> IO ()
+  makeInner = store
+  {-# INLINE makeInner #-}
 
   load :: Ptr Word32 -> IO Word32
   load = peek
@@ -223,9 +233,9 @@ instance Pointable Word64 where
 
   type IsDirect Word64 = 'True
 
-  make :: Word64 -> IO (Ptr Word64)
-  make = new
-  {-# INLINE make #-}
+  makeInner :: Ptr Word64 -> Word64 -> IO ()
+  makeInner = store
+  {-# INLINE makeInner #-}
 
   load :: Ptr Word64 -> IO Word64
   load = peek
@@ -246,9 +256,9 @@ instance Pointable Int where
 
   type IsDirect Int = 'True
 
-  make :: Int -> IO (Ptr Int)
-  make = fmap castPtr . new @Word64 . fromIntegral
-  {-# INLINE make #-}
+  makeInner :: Ptr Int -> Int -> IO ()
+  makeInner ptr = poke (castPtr ptr) . fromIntegral @_ @Word64
+  {-# INLINE makeInner #-}
 
   load :: Ptr Int -> IO Int
   load = fmap fromIntegral . peek @Word64 . castPtr
@@ -269,9 +279,9 @@ instance Pointable Word where
 
   type IsDirect Word = 'True
 
-  make :: Word -> IO (Ptr Word)
-  make = fmap castPtr . new @Word64 . fromIntegral
-  {-# INLINE make #-}
+  makeInner :: Ptr Word -> Word -> IO ()
+  makeInner ptr = poke (castPtr ptr) . fromIntegral @_ @Word64
+  {-# INLINE makeInner #-}
 
   load :: Ptr Word -> IO Word
   load = fmap fromIntegral . peek @Word64 . castPtr
@@ -292,9 +302,9 @@ instance Pointable IntPtr where
 
   type IsDirect IntPtr = 'True
 
-  make :: IntPtr -> IO (Ptr IntPtr)
-  make = fmap castPtr . new @Int64 . fromIntegral
-  {-# INLINE make #-}
+  makeInner :: Ptr IntPtr -> IntPtr -> IO ()
+  makeInner ptr = poke (castPtr ptr) . fromIntegral @_ @Word64
+  {-# INLINE makeInner #-}
 
   load :: Ptr IntPtr -> IO IntPtr
   load = fmap fromIntegral . peek @Int64 . castPtr
@@ -315,9 +325,9 @@ instance Pointable WordPtr where
 
   type IsDirect WordPtr = 'True
 
-  make :: WordPtr -> IO (Ptr WordPtr)
-  make = fmap castPtr . new @Word64 . fromIntegral
-  {-# INLINE make #-}
+  makeInner :: Ptr WordPtr -> WordPtr -> IO ()
+  makeInner ptr = poke (castPtr ptr) . fromIntegral @_ @Word64
+  {-# INLINE makeInner #-}
 
   load :: Ptr WordPtr -> IO WordPtr
   load = fmap fromIntegral . peek @Word64 . castPtr
@@ -338,9 +348,9 @@ instance Pointable (Ptr a) where
 
   type IsDirect (Ptr a) = 'True
 
-  make :: Ptr a -> IO (Ptr (Ptr a))
-  make = fmap castPtr . new . ptrToIntPtr
-  {-# INLINE make #-}
+  makeInner :: Ptr (Ptr a) -> Ptr a -> IO ()
+  makeInner ptr = poke (castPtr ptr) . ptrToIntPtr
+  {-# INLINE makeInner #-}
 
   load :: Ptr (Ptr a) -> IO (Ptr a)
   load = fmap intPtrToPtr . peek . castPtr
@@ -361,9 +371,9 @@ instance Pointable Char where
 
   type IsDirect Char = 'True
 
-  make :: Char -> IO (Ptr Char)
-  make = fmap castPtr . new @Word32 . fromIntegral . ord
-  {-# INLINE make #-}
+  makeInner :: Ptr Char -> Char -> IO ()
+  makeInner ptr = poke (castPtr ptr) . fromIntegral @_ @Word32 . ord
+  {-# INLINE makeInner #-}
 
   load :: Ptr Char -> IO Char
   load = fmap (chr . fromIntegral) . peek @Word32 . castPtr
@@ -382,9 +392,9 @@ instance Pointable () where
 
   type IsDirect () = 'True
 
-  make :: () -> IO (Ptr ())
-  make = const . pure $ nullPtr
-  {-# INLINE make #-}
+  makeInner :: Ptr () -> () -> IO ()
+  makeInner = store
+  {-# INLINE makeInner #-}
 
   load :: Ptr () -> IO ()
   load = const $ pure ()
@@ -403,9 +413,9 @@ instance Pointable Float where
 
   type IsDirect Float = 'True
 
-  make :: Float -> IO (Ptr Float)
-  make = new
-  {-# INLINE make #-}
+  makeInner :: Ptr Float -> Float -> IO ()
+  makeInner ptr = poke (castPtr ptr)
+  {-# INLINE makeInner #-}
 
   load :: Ptr Float -> IO Float
   load = peek
@@ -424,9 +434,9 @@ instance Pointable Double where
 
   type IsDirect Double = 'True
 
-  make :: Double -> IO (Ptr Double)
-  make = new
-  {-# INLINE make #-}
+  makeInner :: Ptr Double -> Double -> IO ()
+  makeInner ptr = poke (castPtr ptr)
+  {-# INLINE makeInner #-}
 
   load :: Ptr Double -> IO Double
   load = peek
@@ -445,10 +455,9 @@ instance Pointable Bool where
 
   type IsDirect Bool = 'True
 
-  make :: Bool -> IO (Ptr Bool)
-  make True  = castPtr <$> new @Word8 1
-  make False = castPtr <$> new @Word8 0
-  {-# INLINE make #-}
+  makeInner :: Ptr Bool -> Bool -> IO ()
+  makeInner = store
+  {-# INLINE makeInner #-}
 
   load :: Ptr Bool -> IO Bool
   load = fmap (/= 0) . peek @Word8 . castPtr
@@ -471,9 +480,9 @@ instance (Pointable a, Pointable b) => Pointable (a, b) where
 
   type IsDirect (a, b) = 'True
 
-  make :: (a, b) -> IO (Ptr (a, b))
-  make (a, b) = castPtr <$> make (P2 a b)
-  {-# INLINE make #-}
+  makeInner :: Ptr (a, b) -> (a, b) -> IO ()
+  makeInner ptr = store (castPtr ptr)
+  {-# INLINE makeInner #-}
 
   load :: Ptr (a, b) -> IO (a, b)
   load ptr = do
@@ -494,9 +503,9 @@ instance (Pointable a, Pointable b, Pointable c) => Pointable (a, b, c) where
 
   type IsDirect (a, b, c) = 'True
 
-  make :: (a, b, c) -> IO (Ptr (a, b, c))
-  make (a, b, c) = castPtr <$> make (P3 a b c)
-  {-# INLINE make #-}
+  makeInner :: Ptr (a, b, c) -> (a, b, c) -> IO ()
+  makeInner ptr = store (castPtr ptr)
+  {-# INLINE makeInner #-}
 
   load :: Ptr (a, b, c) -> IO (a, b, c)
   load ptr = do
@@ -521,9 +530,9 @@ instance ( Pointable a
 
     type IsDirect (a, b, c, d) = 'True
 
-    make :: (a, b, c, d) -> IO (Ptr (a, b, c, d))
-    make (a, b, c, d) = castPtr <$> make (P4 a b c d)
-    {-# INLINE make #-}
+    makeInner :: Ptr (a, b, c, d) -> (a, b, c, d) -> IO ()
+    makeInner ptr = store (castPtr ptr)
+    {-# INLINE makeInner #-}
 
     load :: Ptr (a, b, c, d) -> IO (a, b, c, d)
     load ptr = do
@@ -549,9 +558,9 @@ instance ( Pointable a
 
     type IsDirect (a, b, c, d, e) = 'True
 
-    make :: (a, b, c, d, e) -> IO (Ptr (a, b, c, d, e))
-    make (a, b, c, d, e) = castPtr <$> make (P5 a b c d e)
-    {-# INLINE make #-}
+    makeInner :: Ptr (a, b, c, d, e) -> (a, b, c, d, e) -> IO ()
+    makeInner ptr = store (castPtr ptr)
+    {-# INLINE makeInner #-}
 
     load :: Ptr (a, b, c, d, e) -> IO (a, b, c, d, e)
     load ptr = do
@@ -584,12 +593,9 @@ instance ( Generic a
 
     type IsDirect (WithPointable a) = GIsPrim (Rep a)
 
-    make :: WithPointable a -> IO (Ptr (WithPointable a))
-    make a = do
-      ptr <- mallocBytes (size a)
-      gMake ptr . from $ unWithPointable a
-      pure $ castPtr ptr
-    {-# INLINE make #-}
+    makeInner :: Ptr (WithPointable a) -> WithPointable a -> IO ()
+    makeInner ptr a = gMake (castPtr ptr) . from $ unWithPointable a
+    {-# INLINE makeInner #-}
 
     load :: Ptr (WithPointable a) -> IO (WithPointable a)
     load ptr = do
