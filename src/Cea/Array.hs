@@ -118,6 +118,12 @@ eraseLen :: Ptr (ArrayOf ('Just n) a) -> Ptr (ArrayOf 'Nothing a)
 eraseLen = castPtr
 {-# INLINE eraseLen #-}
 
+-- | Access the element pointer at the given index. An error is thrown if the
+-- index is out of bounds.
+accessArr ::  ArrayPointable Int a e => Int -> a -> IO (Ptr e)
+accessArr = accessArr_
+{-# INLINE accessArr #-}
+
 -- | Read the element at the given index. An error is thrown if the index is
 -- out of bounds.
 readArr :: ArrayPointable Int a e => Int -> a -> IO e
@@ -157,6 +163,21 @@ writeArr' :: forall (n :: Nat) a e
           => a -> e -> IO ()
 writeArr' = writeArr_ (Proxy @n)
 
+-- | Access the element pointer at the given index specified by the type level
+-- @Nat@ @n@. It only works if the length of the array is known at compile
+-- time, and it is a compile time error if the index is out of bounds.
+--
+-- > do
+-- >   arr   <- makeArr @3 (0 :: Int)
+-- >   e2Ptr <- accessArr' @2 arr
+-- >   e2    <- load e2Ptr
+-- >   print e2 -- 0
+accessArr' :: forall (n :: Nat) a e
+            . ArrayPointable (Proxy n) a e
+           => a -> IO (Ptr e)
+accessArr' = accessArr_ (Proxy @n)
+{-# INLINE accessArr' #-}
+
 -- | Get the length of the array pointer.
 class ArrayLen a where
   arrLen :: a -> IO Int
@@ -164,6 +185,8 @@ class ArrayLen a where
 -- | Helper class that allows reading and writing to an array pointer. The
 -- methods are not exposed and are only used internally.
 class ArrayLen a => ArrayPointable n a e | n a -> e where
+  accessArr_ :: n -> a -> IO (Ptr e)
+
   readArr_ :: n -> a -> IO e
 
   writeArr_ :: n -> a -> e -> IO ()
@@ -185,6 +208,10 @@ instance ArrayLen (Ptr (ArrayOf 'Nothing e)) where
 
 instance (KnownNat n, Pointable e)
   => ArrayPointable Int (Ptr (ArrayOf ('Just n) e)) e where
+    accessArr_ :: Int -> Ptr (ArrayOf ('Just n) e) -> IO (Ptr e)
+    accessArr_ = accessArrInt "accessArr: index out of bounds"
+    {-# INLINE accessArr_ #-}
+
     readArr_ :: Int -> Ptr (ArrayOf ('Just n) e) -> IO e
     readArr_ = readArrInt
     {-# INLINE readArr_ #-}
@@ -194,6 +221,10 @@ instance (KnownNat n, Pointable e)
     {-# INLINE writeArr_ #-}
 
 instance Pointable e => ArrayPointable Int (Ptr (ArrayOf 'Nothing e)) e where
+  accessArr_ :: Int -> Ptr (ArrayOf 'Nothing e) -> IO (Ptr e)
+  accessArr_ = accessArrInt "accessArr: index out of bounds"
+  {-# INLINE accessArr_ #-}
+
   readArr_ :: Int -> Ptr (ArrayOf 'Nothing e) -> IO e
   readArr_ = readArrInt
   {-# INLINE readArr_ #-}
@@ -204,33 +235,46 @@ instance Pointable e => ArrayPointable Int (Ptr (ArrayOf 'Nothing e)) e where
 
 instance (KnownNat n, KnownNat n', Pointable e, CmpNat n n' ~ 'LT)
   => ArrayPointable (Proxy n) (Ptr (ArrayOf (Just n') e)) e where
-    readArr_ :: Proxy n -> Ptr (ArrayOf (Just n') e) -> IO e
-    readArr_ _ ptr = do
+    accessArr_ :: Proxy n -> Ptr (ArrayOf (Just n') e) -> IO (Ptr e)
+    accessArr_ _ ptr = do
       len <- arrLen ptr
       let ix = fromIntegral $ natVal (Proxy @n)
       let elemSize = fromIntegral $ val (Proxy @(SizeOf e))
-      load (ptr `plusPtr` ptrSize `plusPtr` (ix * elemSize))
+      pure $ ptr `plusPtr` ptrSize `plusPtr` (ix * elemSize)
+    {-# INLINE accessArr_ #-}
+
+    readArr_ :: Proxy n -> Ptr (ArrayOf (Just n') e) -> IO e
+    readArr_ _ ptr = do
+      elemPtr <- accessArr_ (Proxy @n) ptr
+      load elemPtr
     {-# INLINE readArr_ #-}
 
     writeArr_ :: Proxy n -> Ptr (ArrayOf (Just n') e) -> e -> IO ()
     writeArr_ _ ptr e = do
-      len <- arrLen ptr
-      let ix = fromIntegral $ natVal (Proxy @n)
-      let elemSize = fromIntegral $ val (Proxy @(SizeOf e))
-      store (ptr `plusPtr` ptrSize `plusPtr` (ix * elemSize)) e
+      elemPtr <- accessArr_ (Proxy @n) ptr
+      store elemPtr e
     {-# INLINE writeArr_ #-}
+
+accessArrInt :: forall e p
+              . ( ArrayLen (Ptr (ArrayOf p e))
+                , Pointable e )
+             => String -> Int -> Ptr (ArrayOf p e) -> IO (Ptr e)
+accessArrInt errMsg ix ptr = do
+  len <- arrLen ptr
+  if ix >= len || ix < 0
+    then error errMsg
+    else do
+      let elemSize = fromIntegral $ val (Proxy @(SizeOf e))
+      pure $ ptr `plusPtr` ptrSize `plusPtr` (ix * elemSize)
+{-# INLINE accessArrInt #-}
 
 readArrInt :: forall e p
            . ( ArrayLen (Ptr (ArrayOf p e))
              , Pointable e )
           => Int -> Ptr (ArrayOf p e) -> IO e
 readArrInt ix ptr = do
-  len <- arrLen ptr
-  if ix >= len || ix < 0
-    then error "readArr: Index out of bound"
-    else do
-      let elemSize = fromIntegral $ val (Proxy @(SizeOf e))
-      load (ptr `plusPtr` ptrSize `plusPtr` (ix * elemSize))
+  elemPtr <- accessArrInt "readArr: Index out of bound" ix ptr
+  load elemPtr
 {-# INLINE readArrInt #-}
 
 writeArrInt :: forall e p
@@ -238,10 +282,6 @@ writeArrInt :: forall e p
                , Pointable e )
             => Int -> Ptr (ArrayOf p e) -> e -> IO ()
 writeArrInt ix ptr e = do
-  len <- arrLen ptr
-  if ix >= len || ix < 0
-    then error "writeArr: Index out of bound"
-    else do
-      let elemSize = fromIntegral $ val (Proxy @(SizeOf e))
-      store (ptr `plusPtr` ptrSize `plusPtr` (ix * elemSize)) e
+  elemPtr <- accessArrInt "writeArr: Index out of bound" ix ptr
+  store elemPtr e
 {-# INLINE writeArrInt #-}
