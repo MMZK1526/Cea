@@ -14,8 +14,10 @@ module Cea.Array
   , eraseLen
   , readArr
   , writeArr
+  , accessArr
   , readArr'
   , writeArr'
+  , accessArr'
   , arrLen
   , ArrayPointable
   ) where
@@ -51,7 +53,7 @@ makeArr x = do
   ptr <- mallocBytes (ptrSize + len * elemSize)
   let arr      = castPtr ptr `plusPtr` ptrSize
   poke (castPtr ptr) len
-  forM_ [0..(len - 1)] \ix -> store (arr `plusPtr` (ix * elemSize)) x
+  forM_ [0..(len - 1)] \ix -> makeInner (arr `plusPtr` (ix * elemSize)) x
   pure ptr
 
 -- | Make an array pointer from the given list or @Foldable@ instance.
@@ -69,7 +71,7 @@ makeArrFromList xs = do
   ptr <- mallocBytes (ptrSize + len * elemSize)
   let arr      = castPtr ptr `plusPtr` ptrSize
   poke (castPtr ptr) len
-  zipWithM_ store (map (arr `plusPtr`) [0, elemSize..]) xs'
+  zipWithM_ makeInner (map (arr `plusPtr`) [0, elemSize..]) xs'
   pure ptr
 
 -- | Load the array pointer into an immutable array.

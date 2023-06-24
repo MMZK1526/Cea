@@ -125,20 +125,6 @@ main = hspec do
       loadsAt @'[4, 1] ptr >>= (`shouldBe` 810)
       delete ptr
 
-  describe "Primitive array lifecycle" do
-    it "Can make, read from, and write to IntArray with compile-time length" do
-      arr  <- makeArr @3 (-1 :: Int)
-      list <- loadArrToList arr
-      list `shouldBe` replicate 3 (-1)
-      e0   <- readArr' @0 arr
-      e1   <- readArr' @1 arr
-      e2   <- readArr' @2 arr
-      list `shouldBe` [e0, e1, e2]
-      writeArr' @0 arr 0
-      writeArr' @1 arr 1
-      writeArr' @2 arr 2
-      loadArrToList arr >>= (`shouldBe` [0, 1, 2])
-      deleteArr arr
   describe "Custom tuple load, store, and index selection" do
     let val1 = MyTuple ( MyQuadruple 1 1 4 (MyTuple '5' 1) )
                        ( MyTuple (MyTriple 5 1 (MySolo 4))
@@ -228,7 +214,7 @@ main = hspec do
       delete ptr
 
   describe "Primitive array lifecycle" do
-    it "Can make, read from, and write to IntArray with compile-time length" do
+    it "Can make, read from, and write to Int array with compile-time length" do
       arr  <- makeArr @3 (-1 :: Int)
       list <- loadArrToList arr
       list `shouldBe` replicate 3 (-1)
@@ -241,7 +227,7 @@ main = hspec do
       writeArr' @2 arr 2
       loadArrToList arr >>= (`shouldBe` [0, 1, 2])
       deleteArr arr
-    it "Can make, read from, and write to IntArray with run-time length" do
+    it "Can make, read from, and write to Int array with run-time length" do
       arr  <- makeArrFromList @Int [-1, -1, -1]
       list <- loadArrToList arr
       list `shouldBe` replicate 3 (-1)
@@ -260,6 +246,34 @@ main = hspec do
       writeArr (-1) arr 0 `shouldThrow` anyErrorCall
       readArr 3 arr `shouldThrow` anyErrorCall
       writeArr 3 arr 0 `shouldThrow` anyErrorCall
+      deleteArr arr
+  
+  describe "Custom tuple array lifecycle" do
+    let val1 = MyTuple ( MyQuadruple 1 1 4 (MyTuple '5' 1) )
+                       ( MyTuple (MyTriple 5 1 (MySolo 4))
+                                 (MyQuadruple () True 9 810) ) :: CustomTuple
+    let val2 = MyTuple ( MyQuadruple 4 5 1 (MyTuple '8' 2) )
+                       ( MyTuple (MyTriple 10 2 (MySolo 8))
+                                 (MyQuadruple () False 8 1919) ) :: CustomTuple
+    let list = [val1, val2]
+    it "Can make, read from, and write to CustomTuple array" do
+      arr <- makeArrFromList list
+      loadArrToList arr >>= (`shouldBe` list)
+      e0 <- readArr 0 arr
+      e1 <- readArr 1 arr
+      list `shouldBe` [e0, e1]
+      e0 `shouldBe` val1
+      e1 `shouldBe` val2
+      writeArr 0 arr val2
+      writeArr 1 arr val1
+      loadArrToList arr >>= (`shouldBe` [val2, val1])
+      deleteArr arr
+    it "Can access element pointrs of CustomTuple array" do
+      arr  <- makeArrFromList list
+      ptr0 <- accessArr 0 arr
+      ptr1 <- accessArr 1 arr
+      load ptr1 >>= store ptr0
+      loadArrToList arr >>= (`shouldBe` [val2, val2])
       deleteArr arr
 
 primitiveAssertion :: forall a. (Bounded a, Pointable a, Eq a, Show a) => IO ()

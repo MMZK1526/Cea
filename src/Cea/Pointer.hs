@@ -69,6 +69,10 @@ class (Val (SizeOf a), KnownBool (IsDirect a)) => Pointable a where
   load :: Ptr a -> IO a
 
   -- | Store the value in the pointer.
+  --
+  -- The signature of this function is the same as @makeInner@, but the
+  -- difference is that @store@ never creates any new pointers and always assume
+  -- that all nested pointers are already allocated.
   store :: Ptr a -> a -> IO ()
 
   -- | Free the pointer recursively.
