@@ -35,8 +35,7 @@ type CustomTuple = MyTuple (MyQuadruple Int8 Int16 Int32 (MyTuple Char Word8))
                                     (MyQuadruple () Bool IntPtr WordPtr))
 
 main :: IO ()
-main = 
-  hspec do
+main = hspec do
   describe "Primitive type load & store" do
     it "Can make, load, and store Int8" $ primitiveAssertion @Int8
     it "Can make, load, and store Int16" $ primitiveAssertion @Int16
@@ -72,6 +71,7 @@ main =
       store ptr (val `plusPtr` 114514)
       load ptr >>= (`shouldBe` (nullPtr `plusPtr` 114514))
       delete ptr
+  
   describe "Native tuple load, store, and index selection" do
     let val1 = ((1, 1), 4, (5, 1, 4, ()), True, ('9', 810)) :: FancyTuple
     let val2 = ((4, 5), 1, (10, 2, 8, ()), False, ('8', 1919)) :: FancyTuple
@@ -124,6 +124,7 @@ main =
       storesAt @'[4, 1] ptr 810
       loadsAt @'[4, 1] ptr >>= (`shouldBe` 810)
       delete ptr
+
   describe "Primitive array lifecycle" do
     it "Can make, read from, and write to IntArray with compile-time length" do
       arr  <- makeArr @3 (-1 :: Int)
@@ -182,6 +183,7 @@ main =
       storesAt @'[1, 1, 3] ptr 1919
       loadsAt @'[] ptr >>= (`shouldBe` val2)
       delete ptr
+
   describe "Access product types by selector name" do
     let val1 = MyTuple ( MyQuadruple 1 1 4 (MyTuple '5' 1) )
                        ( MyTuple (MyTriple 5 1 (MySolo 4))
@@ -224,6 +226,41 @@ main =
       storesAt @'["value2", "value2", "value4"] ptr 1919
       loadsAt @'[] ptr >>= (`shouldBe` val2)
       delete ptr
+
+  describe "Primitive array lifecycle" do
+    it "Can make, read from, and write to IntArray with compile-time length" do
+      arr  <- makeArr @3 (-1 :: Int)
+      list <- loadArrToList arr
+      list `shouldBe` replicate 3 (-1)
+      e0   <- readArr' @0 arr
+      e1   <- readArr' @1 arr
+      e2   <- readArr' @2 arr
+      list `shouldBe` [e0, e1, e2]
+      writeArr' @0 arr 0
+      writeArr' @1 arr 1
+      writeArr' @2 arr 2
+      loadArrToList arr >>= (`shouldBe` [0, 1, 2])
+      deleteArr arr
+    it "Can make, read from, and write to IntArray with run-time length" do
+      arr  <- makeArrFromList @Int [-1, -1, -1]
+      list <- loadArrToList arr
+      list `shouldBe` replicate 3 (-1)
+      e0   <- readArr 0 arr
+      e1   <- readArr 1 arr
+      e2   <- readArr 2 arr
+      list `shouldBe` [e0, e1, e2]
+      writeArr 0 arr 0
+      writeArr 1 arr 1
+      writeArr 2 arr 2
+      loadArrToList arr >>= (`shouldBe` [0, 1, 2])
+      deleteArr arr
+    it "Throws error when accessing out-of-bounds index" do
+      arr <- makeArrFromList @Int [-1, -1, -1]
+      readArr (-1) arr `shouldThrow` anyErrorCall
+      writeArr (-1) arr 0 `shouldThrow` anyErrorCall
+      readArr 3 arr `shouldThrow` anyErrorCall
+      writeArr 3 arr 0 `shouldThrow` anyErrorCall
+      deleteArr arr
 
 primitiveAssertion :: forall a. (Bounded a, Pointable a, Eq a, Show a) => IO ()
 primitiveAssertion = do
