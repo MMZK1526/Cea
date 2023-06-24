@@ -1,5 +1,9 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
 
+-- | This module provides functions to work with arrays of @Pointable@ types.
+--
+-- The array always has its length stored at the first @ptrSize@ bytes of the
+-- pointer, and the elements are stored after that.
 module Cea.Array
   ( ArrayOf
   , makeArr
@@ -13,6 +17,7 @@ module Cea.Array
   , readArr'
   , writeArr'
   , arrLen
+  , ArrayPointable
   ) where
 
 import           Control.Monad
@@ -27,6 +32,12 @@ import           Foreign.Ptr
 import           Foreign.Storable
 import           GHC.TypeNats
 
+-- | A dummy type that represents an array of type @a@ with length @n@. If the
+-- length is @'Nothing@, it means that we do not know the length of the array
+-- at compile time.
+--
+-- It is generally used as argument to @Ptr@, e.g. @Ptr (ArrayOf ('Just 3) Int)@
+-- which represents a pointer to an array of 3 @Int@s.
 data ArrayOf (n :: Maybe Nat) (a :: Type)
 
 -- | Make an array of size @n@ with all elements filled with @x@.
@@ -107,31 +118,60 @@ eraseLen :: Ptr (ArrayOf ('Just n) a) -> Ptr (ArrayOf 'Nothing a)
 eraseLen = castPtr
 {-# INLINE eraseLen #-}
 
+-- | Read the element at the given index. An error is thrown if the index is
+-- out of bounds.
 readArr :: ArrayPointable Int a e => Int -> a -> IO e
 readArr = readArr_
 {-# INLINE readArr #-}
 
+-- | Write the element at the given index. An error is thrown if the index is
+-- out of bounds.
 writeArr :: ArrayPointable Int a e => Int -> a -> e -> IO ()
 writeArr = writeArr_
 {-# INLINE writeArr #-}
 
+-- | Read the element at the given index specified by the type level @Nat@ @n@.
+-- It only works if the length of the array is known at compile time, and it is
+-- a compile time error if the index is out of bounds.
+--
+-- > do
+-- >   arr <- makeArr @3 (0 :: Int)
+-- >   e2  <- readArr' @2 arr
+-- >   print e2 -- 0
 readArr' :: forall (n :: Nat) a e
           . ArrayPointable (Proxy n) a e
          => a -> IO e
 readArr' = readArr_ (Proxy @n)
 
+-- | Write the element at the given index specified by the type level @Nat@ @n@.
+-- It only works if the length of the array is known at compile time, and it is
+-- a compile time error if the index is out of bounds.
+--
+-- > do
+-- >   arr <- makeArr @3 (0 :: Int)
+-- >   writeArr' @2 arr 1
+-- >   e2  <- readArr' @2 arr
+-- >   print e2 -- 1
 writeArr' :: forall (n :: Nat) a e
            . ArrayPointable (Proxy n) a e
           => a -> e -> IO ()
 writeArr' = writeArr_ (Proxy @n)
 
+-- | Get the length of the array pointer.
 class ArrayLen a where
   arrLen :: a -> IO Int
 
+-- | Helper class that allows reading and writing to an array pointer. The
+-- methods are not exposed and are only used internally.
 class ArrayLen a => ArrayPointable n a e | n a -> e where
   readArr_ :: n -> a -> IO e
 
   writeArr_ :: n -> a -> e -> IO ()
+
+
+--------------------------------------------------------------------------------
+-- Internal Instances
+--------------------------------------------------------------------------------
 
 instance KnownNat n => ArrayLen (Ptr (ArrayOf ('Just n) e)) where
   arrLen :: Ptr (ArrayOf ('Just n) e) -> IO Int

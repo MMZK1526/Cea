@@ -11,7 +11,7 @@ module Cea.Pointer.Accessor
   , loadsAt
   , storeAt
   , storesAt
-  , Accessible(..)
+  , Accessible (Accessor)
   ) where
 
 import           Cea.Pointer
@@ -103,11 +103,12 @@ storesAt ptr val = do
 
 -- | A type class that supports access to each field.
 --
--- It is rarely required to implement this type class manually. Instead, any
+-- It is not required to implement this type class manually. Instead, any
 -- data type that derives @Pointable@ via @WithPointable@ will automatically
 -- derive @Accessible@.
 class Accessible ix a where
   type Accessor ix a
+
   access_ :: Proxy ix -> Ptr a -> IO (Ptr (Accessor ix a))
 
 

@@ -109,13 +109,13 @@ demoArray = do
   putStrLn $ "The address is " ++ show intArr ++ ", which may change at each run"
   -- Storing some values into the array.
   putStrLn "-- Storing some values into the array"
-  writeArr (Proxy @0) intArr 1
-  writeArr (Proxy @1) intArr 2
-  writeArr (Proxy @2) intArr 3
-  writeArr (Proxy @3) intArr 4
-  writeArr (Proxy @4) intArr 5
-  writeArr (Proxy @5) intArr 6
-  writeArr (Proxy @6) intArr 7
+  writeArr' @0 intArr 1
+  writeArr' @1 intArr 2
+  writeArr' @2 intArr 3
+  writeArr' @3 intArr 4
+  writeArr' @4 intArr 5
+  writeArr' @5 intArr 6
+  writeArr' @6 intArr 7
   -- Load the array into a list.
   putStrLn "-- Load the array into a list"
   xs <- loadArrToList intArr
