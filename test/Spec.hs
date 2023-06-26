@@ -2,8 +2,8 @@
 {-# LANGUAGE DuplicateRecordFields #-}
 
 import           Cea.Array
-import           Cea.Pointer
 import           Cea.Pointer.Accessor
+import           Cea.Pointer.Internal
 import           Data.Int
 import           Data.Word
 import           Foreign.Ptr

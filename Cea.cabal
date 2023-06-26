@@ -20,6 +20,7 @@ test-suite cea-test
         Cea.Array,
         Cea.Pointer,
         Cea.Pointer.Accessor,
+        Cea.Pointer.Internal,
         Cea.Pointer.Unsafe,
         Cea.Utils.Symbol2Nat
     default-extensions:
@@ -61,6 +62,7 @@ executable cea
         Cea.Array,
         Cea.Pointer,
         Cea.Pointer.Accessor,
+        Cea.Pointer.Internal,
         Cea.Pointer.Unsafe,
         Cea.Utils.Symbol2Nat
     default-extensions:
@@ -100,6 +102,7 @@ library
         Cea.Pointer.Accessor,
         Cea.Pointer.Unsafe
     other-modules:
+        Cea.Pointer.Internal,
         Cea.Utils.Symbol2Nat
     default-extensions:
         BlockArguments,

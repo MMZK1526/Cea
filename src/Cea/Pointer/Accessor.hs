@@ -14,7 +14,7 @@ module Cea.Pointer.Accessor
   , Accessible (Accessor)
   ) where
 
-import           Cea.Pointer
+import           Cea.Pointer.Internal
 import           Cea.Utils.Symbol2Nat
 import           Data.Kind
 import           Data.Proxy

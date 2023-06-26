@@ -23,7 +23,7 @@ module Cea.Array
   ) where
 
 import           Control.Monad
-import           Cea.Pointer
+import           Cea.Pointer.Internal
 import           Data.Array
 import           Data.Array.IO
 import           Data.Foldable
