@@ -268,7 +268,7 @@ main = hspec do
       writeArr 1 arr val1
       loadArrToList arr >>= (`shouldBe` [val2, val1])
       deleteArr arr
-    it "Can access element pointrs of CustomTuple array" do
+    it "Can access element pointers of CustomTuple array" do
       arr  <- makeArrFromList list
       ptr0 <- accessArr 0 arr
       ptr1 <- accessArr 1 arr
