@@ -20,7 +20,6 @@ import           Data.Proxy
 import           Data.Word
 import           Foreign.Ptr
 import           Foreign.Marshal.Alloc
-import           Foreign.Marshal.Utils
 import           Foreign.Storable
 import           GHC.Generics
 import           GHC.TypeLits

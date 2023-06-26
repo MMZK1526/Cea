@@ -15,6 +15,7 @@ module Cea.Pointer.Accessor
   ) where
 
 import           Cea.Pointer
+import           Cea.Utils.Symbol2Nat
 import           Data.Kind
 import           Data.Proxy
 import           Data.Type.Bool
