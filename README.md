@@ -197,6 +197,9 @@ main = do
   delete ptr
 ```
 
+## List
+TODO
+
 ## Array
 
 There are two types of `Pointable` arrays, one has compile-time known size, and the other has runtime known size. To use arrays, import `Cea.Array`:
@@ -281,7 +284,6 @@ data Student = Student { name       :: String
   deriving stock (Generic, Show)
   deriving anyclass (Cea, Pointable)
 ```
-TODO: Currently `String` is not `Pointable`, but I will handle lists as arrays later.
 
 Here's an example of creating an array of two students, then adding them to the Dean's List:
 
