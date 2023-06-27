@@ -19,6 +19,7 @@ test-suite cea-test
     other-modules:
         Cea.Array,
         Cea.Class.Internal,
+        Cea.List.Internal,
         Cea.Pointer,
         Cea.Pointer.Accessor,
         Cea.Pointer.Internal,
@@ -62,6 +63,7 @@ executable cea
     other-modules:
         Cea.Array,
         Cea.Class.Internal,
+        Cea.List.Internal,
         Cea.Pointer,
         Cea.Pointer.Accessor,
         Cea.Pointer.Internal,
@@ -105,6 +107,7 @@ library
         Cea.Pointer.Unsafe
     other-modules:
         Cea.Class.Internal,
+        Cea.List.Internal,
         Cea.Pointer.Internal,
         Cea.Utils.Symbol2Nat
     default-extensions:

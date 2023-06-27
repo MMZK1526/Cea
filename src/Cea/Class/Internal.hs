@@ -50,4 +50,3 @@ instance (Cea a, Cea b, Cea c) => Cea (a, b, c)
 instance (Cea a, Cea b, Cea c, Cea d) => Cea (a, b, c, d)
 
 instance (Cea a, Cea b, Cea c, Cea d, Cea e) => Cea (a, b, c, d, e)
-
