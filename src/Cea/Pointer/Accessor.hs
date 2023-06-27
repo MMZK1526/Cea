@@ -337,7 +337,7 @@ instance (GAccessible (ix :: Nat) a) => ProductAccess 'True ix (a :*: b) where
 
 instance ( GAccessible (ix :: Nat) b
          , KnownNat (ToNat (SLSize f a))
-         , ix ~ ix' - GLength a, GIsPrim a ~ f
+         , ix ~ ix' - GLength a, GIsDirect a ~ f
          , HasSLSize f a )
   => ProductAccess 'False ix' (a :*: b) where
     type ProductAccessor 'False ix' (a :*: b) = GAccessor (ix' - GLength a) b
@@ -359,7 +359,7 @@ instance (GAccessible (ix :: Symbol) a)
 
 instance ( GAccessible (ix :: Symbol) b
          , KnownNat (ToNat (SLSize f a))
-         , GIsPrim a ~ f
+         , GIsDirect a ~ f
          , HasSLSize f a )
   => ProductAccess 'False ix (a :*: b) where
     type ProductAccessor 'False ix (a :*: b) = GAccessor ix b

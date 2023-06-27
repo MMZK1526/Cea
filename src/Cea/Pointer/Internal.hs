@@ -39,6 +39,7 @@ import           GHC.TypeLits
 class (Val (SizeOf a), KnownBool (IsDirect a)) => Pointable a where
   -- | The size of the type in bytes.
   type SizeOf a :: MyNat
+  type SizeOf a = GSizeOf (Rep a)
 
   -- | Whether the type is a direct type. If the type is indirect, it will be
   -- stored via a layer of pointer indirection.
@@ -46,6 +47,7 @@ class (Val (SizeOf a), KnownBool (IsDirect a)) => Pointable a where
   -- By default, it is @'True@ for all concrete instances in this module, and
   -- @'False@ for all user-defined types.
   type IsDirect a :: Bool
+  type IsDirect a = GIsDirect (Rep a)
 
   -- | Term-level version of @SizeOf@.
   size :: a -> Int
@@ -587,14 +589,16 @@ instance ( Pointable a
 -- | A wrapper used for deriving @Pointable@ instances for @Generic@ types.
 newtype WithPointable a = WithPointable { unWithPointable :: a }
 
+class Cea a
+
 -- The instance is derived from @GPointable@, a generic version of @Pointable@.
 instance ( Generic a
          , GPointable (Rep a)
-         , KnownBool (GIsPrim (Rep a)) )
+         , KnownBool (GIsDirect (Rep a)) )
   => Pointable (WithPointable a) where
     type SizeOf (WithPointable a) = GSizeOf (Rep a)
 
-    type IsDirect (WithPointable a) = GIsPrim (Rep a)
+    type IsDirect (WithPointable a) = GIsDirect (Rep a)
 
     makeInner :: Ptr (WithPointable a) -> WithPointable a -> IO ()
     makeInner ptr a = gMake (castPtr ptr) . from $ unWithPointable a
@@ -625,7 +629,7 @@ class (Val (GSizeOf a)) => GPointable a where
   -- See @MyNat@ for more information.
   type GSizeOf a :: MyNat
 
-  type GIsPrim a :: Bool
+  type GIsDirect a :: Bool
 
   gSize :: a p -> Int
   gSize = const . fromIntegral $ val (Proxy @(GSizeOf a))
@@ -645,7 +649,7 @@ class (Val (GSizeOf a)) => GPointable a where
 instance GPointable U1 where
   type GSizeOf U1 = FromNat 0
 
-  type GIsPrim U1 = 'True
+  type GIsDirect U1 = 'True
 
   gMake :: Ptr (U1 p) -> U1 p -> IO ()
   gMake _ _ = pure ()
@@ -666,7 +670,7 @@ instance GPointable U1 where
 instance GPointable a => GPointable (M1 D c a) where
   type GSizeOf (M1 D c a) = GSizeOf a
 
-  type GIsPrim (M1 D c a) = 'False -- 'False for custom data types
+  type GIsDirect (M1 D c a) = 'False -- 'False for custom data types
 
   gMake :: Ptr (M1 D c a p) -> M1 i c a p -> IO ()
   gMake ptr a = gMake (castPtr ptr) (unM1 a)
@@ -687,7 +691,7 @@ instance GPointable a => GPointable (M1 D c a) where
 instance GPointable a => GPointable (M1 C c a) where
   type GSizeOf (M1 C c a) = GSizeOf a
 
-  type GIsPrim (M1 C c a) = GIsPrim a
+  type GIsDirect (M1 C c a) = GIsDirect a
 
   gMake :: Ptr (M1 C c a p) -> M1 i c a p -> IO ()
   gMake ptr a = gMake (castPtr ptr) (unM1 a)
@@ -708,7 +712,7 @@ instance GPointable a => GPointable (M1 C c a) where
 instance GPointable a => GPointable (M1 S c a) where
   type GSizeOf (M1 S c a) = GSizeOf a
 
-  type GIsPrim (M1 S c a) = GIsPrim a
+  type GIsDirect (M1 S c a) = GIsDirect a
 
   gMake :: Ptr (M1 S c a p) -> M1 i c a p -> IO ()
   gMake ptr a = gMake (castPtr ptr) (unM1 a)
@@ -740,7 +744,7 @@ instance ( Val (GSizeOf (K1 i a))
   => GPointable (K1 i a) where
     type GSizeOf (K1 i a) = 'Si (IsDirect a) ('TypeNat a) (FromNat PtrSize)
 
-    type GIsPrim (K1 i a) = IsDirect a
+    type GIsDirect (K1 i a) = IsDirect a
 
     gMake :: Ptr (K1 i a p) -> K1 i a p -> IO ()
     gMake ptr a = if boolVal (Proxy @f)
@@ -779,8 +783,8 @@ instance ( Val (GSizeOf (a :*: b))
          , GPointable a
          , GPointable b
          , Val (SLSize f a)
-         , GIsPrim a ~ f
-         , GIsPrim b ~ g
+         , GIsDirect a ~ f
+         , GIsDirect b ~ g
          , KnownBool f
          , KnownBool g )
   => GPointable (a :*: b) where
@@ -788,7 +792,7 @@ instance ( Val (GSizeOf (a :*: b))
 
     -- The product type itself is direct regardless of the fields. The
     -- "indirection" will come from the data meta @M1 D@.
-    type GIsPrim (a :*: b) = 'True
+    type GIsDirect (a :*: b) = 'True
 
     gMake :: Ptr ((a :*: b) p) -> (a :*: b) p -> IO ()
     gMake ptr x@(a :*: b) = do
@@ -845,12 +849,12 @@ instance (Val (GSizeOf a), KnownBool f, GPointable a) => HasSLSize f a where
 -- recursive, it's "size" should be 8 (the pointer size) since the inner @XRec@
 -- should be represented by a pointer.
 -- If we define @GSizeOf@ using @Nat@, then during compilation, GHC will try to
--- evaluate @GSizeOf XRec@, which is @If (GIsPrim XRec) (SizeOf XRec) 8@.
--- However, despite @GIsPrim XRec@ is @'False@, GHC would still attempt to
+-- evaluate @GSizeOf XRec@, which is @If (GIsDirect XRec) (SizeOf XRec) 8@.
+-- However, despite @GIsDirect XRec@ is @'False@, GHC would still attempt to
 -- expand both branches of the @If@, leading to an infinite loop.
 --
 -- If we wrap it using @MyNat@, then @GSizeOf XRec@ will be
--- @'Si (GIsPrim XRec) XRec 8@, which then simplifies to @8@ since @XRec@ cannot
+-- @'Si (GIsDirect XRec) XRec 8@, which then simplifies to @8@ since @XRec@ cannot
 -- be further evaluated.
 data MyNat = Zero
            | Succ MyNat
