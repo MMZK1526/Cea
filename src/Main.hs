@@ -10,7 +10,7 @@ import           GHC.Generics
 
 data Tuple a b = Tuple a b
   deriving stock (Eq, Ord, Show, Generic)
-  deriving Pointable via WithPointable (Tuple a b)
+  deriving anyclass (Cea, Pointable)
 
 type Int8Tuple = Tuple Int8 Int8
 type TupleOfInt8Tuples = Tuple Int8Tuple Int8Tuple
@@ -124,7 +124,7 @@ demoArray = do
 
 data IntTuple = IntTuple Int Int
   deriving stock (Eq, Ord, Show, Generic)
-  deriving Pointable via WithPointable IntTuple
+  deriving anyclass (Cea, Pointable)
 
 fib :: Int -> Int
 fib 0 = 0

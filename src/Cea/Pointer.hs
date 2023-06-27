@@ -2,7 +2,7 @@
 -- safe to use.
 module Cea.Pointer
   ( Pointable(..)
-  , WithPointable(..)
+  , Cea
   ) where
 
 import           Cea.Pointer.Internal

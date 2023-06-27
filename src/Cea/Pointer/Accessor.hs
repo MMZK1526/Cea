@@ -11,7 +11,7 @@ module Cea.Pointer.Accessor
   , loadsAt
   , storeAt
   , storesAt
-  , Accessible (Accessor)
+  , Accessible (..)
   ) where
 
 import           Cea.Pointer.Internal
@@ -105,7 +105,7 @@ storesAt ptr val = do
 -- | A type class that supports access to each field.
 --
 -- It is not required to implement this type class manually. Instead, any
--- data type that derives @Pointable@ via @WithPointable@ will automatically
+-- data type that derives @Pointable@ via @@ will automatically
 -- derive @Accessible@.
 class Accessible ix a where
   type Accessor ix a
@@ -119,7 +119,7 @@ class Accessible ix a where
 
 -- The instance is derived from @GAccessible@, a generic version of
 -- @Accessible@.
-instance (Pointable a, GAccessible ix (Rep a)) => Accessible ix a where
+instance (Cea a, Pointable a, GAccessible ix (Rep a)) => Accessible ix a where
   -- | The type for the field at the given index.
   type Accessor ix a = GAccessor ix (Rep a)
 

@@ -14,21 +14,21 @@ type FancyTuple
   = ((Int8, Int16), Int32, (Int64, Float, Double, ()), Bool, (Char, Word64))
 
 newtype MySolo a = MySolo { value1 :: a }
-  deriving (Eq, Show, Generic)
-  deriving Pointable via WithPointable (MySolo a)
+  deriving stock (Eq, Ord, Show, Generic)
+  deriving anyclass (Cea, Pointable)
 
 data MyTuple a b = MyTuple { value1 :: a, value2 :: b }
-  deriving (Eq, Show, Generic)
-  deriving Pointable via WithPointable (MyTuple a b)
+  deriving stock (Eq, Ord, Show, Generic)
+  deriving anyclass (Cea, Pointable)
 
 data MyTriple a b c = MyTriple { value1 :: a, value2 :: b, value3 :: c }
-  deriving (Eq, Show, Generic)
-  deriving Pointable via WithPointable (MyTriple a b c)
+  deriving stock (Eq, Ord, Show, Generic)
+  deriving anyclass (Cea, Pointable)
 
 data MyQuadruple a b c d
   = MyQuadruple { value1 :: a, value2 :: b, value3 :: c, value4 :: d }
-    deriving (Eq, Show, Generic)
-    deriving Pointable via WithPointable (MyQuadruple a b c d)
+    deriving stock (Eq, Ord, Show, Generic)
+  deriving anyclass (Cea, Pointable)
 
 type CustomTuple = MyTuple (MyQuadruple Int8 Int16 Int32 (MyTuple Char Word8))
                            (MyTuple (MyTriple Int64 Float (MySolo Double))

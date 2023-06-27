@@ -27,15 +27,15 @@ import           GHC.TypeLits
 -- | A type class that supports marshalling from and to C-pointers.
 --
 -- This type class rarely requires manual implementation, and the common way of
--- declaring an instance of it is via the helper @WithPointable@ (using the 
--- extensions @DeriveGeneric@ and @DerivingVia@).
+-- declaring an instance of it is to derive via @Generic@ and @Cea@ (using the 
+-- extensions @DeriveGeneric@ and @DeriveAnyClass@).
 --
 -- For example, the following code declares an instance of @Pointable@ for the
 -- type @Foo@:
 --
 -- > data Foo = Foo Int8 Int16 Int32 Int64
--- >   deriving (Generic)
--- >   deriving (Pointable) via WithPointable Foo
+-- >  deriving stock Generic
+-- >  deriving anyclass (Cea, Pointable)
 class (Val (SizeOf a), KnownBool (IsDirect a)) => Pointable a where
   -- | The size of the type in bytes.
   type SizeOf a :: MyNat
@@ -65,9 +65,16 @@ class (Val (SizeOf a), KnownBool (IsDirect a)) => Pointable a where
   -- | Store the value in the given pointer, creating pointers for the fields
   -- if necessary.
   makeInner :: Ptr a -> a -> IO ()
+  default makeInner :: (Generic a, Cea a, GPointable (Rep a))
+                    => Ptr a -> a -> IO ()
+  makeInner ptr = gMake (castPtr ptr) . from
+  {-# INLINE makeInner #-}
 
   -- | Load the value from the pointer.
   load :: Ptr a -> IO a
+  default load :: (Generic a, Cea a, GPointable (Rep a)) => Ptr a -> IO a
+  load ptr = to <$> gLoad (castPtr ptr :: Ptr (Rep a p))
+  {-# INLINE load #-}
 
   -- | Store the value in the pointer.
   --
@@ -75,6 +82,9 @@ class (Val (SizeOf a), KnownBool (IsDirect a)) => Pointable a where
   -- difference is that @store@ never creates any new pointers and always assume
   -- that all nested pointers are already allocated.
   store :: Ptr a -> a -> IO ()
+  default store :: (Generic a, Cea a, GPointable (Rep a)) => Ptr a -> a -> IO ()
+  store ptr a = gStore (castPtr ptr :: Ptr (Rep a p)) $ from a
+  {-# INLINE store #-}
 
   -- | Free the pointer recursively.
   delete :: Ptr a -> IO ()
@@ -85,6 +95,10 @@ class (Val (SizeOf a), KnownBool (IsDirect a)) => Pointable a where
   --
   -- For primitive types, this is equivalent to @const (pure ())@.
   deleteInner :: Ptr a -> IO ()
+  default deleteInner :: (Generic a, Cea a, GPointable (Rep a))
+                      => Ptr a -> IO ()
+  deleteInner ptr = gDelete (castPtr ptr :: Ptr (Rep a p))
+  {-# INLINE deleteInner #-}
 
 instance Pointable Int8 where
   type SizeOf Int8 = FromNat 1
@@ -586,39 +600,51 @@ instance ( Pointable a
 -- Generic Derivation Wrapper
 --------------------------------------------------------------------------------
 
--- | A wrapper used for deriving @Pointable@ instances for @Generic@ types.
-newtype WithPointable a = WithPointable { unWithPointable :: a }
-
 class Cea a
 
--- The instance is derived from @GPointable@, a generic version of @Pointable@.
-instance ( Generic a
-         , GPointable (Rep a)
-         , KnownBool (GIsDirect (Rep a)) )
-  => Pointable (WithPointable a) where
-    type SizeOf (WithPointable a) = GSizeOf (Rep a)
+instance Cea Word8
 
-    type IsDirect (WithPointable a) = GIsDirect (Rep a)
+instance Cea Word16
 
-    makeInner :: Ptr (WithPointable a) -> WithPointable a -> IO ()
-    makeInner ptr a = gMake (castPtr ptr) . from $ unWithPointable a
-    {-# INLINE makeInner #-}
+instance Cea Word32
 
-    load :: Ptr (WithPointable a) -> IO (WithPointable a)
-    load ptr = do
-      let ptr' = castPtr ptr :: Ptr (Rep a p)
-      WithPointable . to <$> gLoad ptr'
-    {-# INLINE load #-}
+instance Cea Word64
 
-    store :: Ptr (WithPointable a) -> WithPointable a -> IO ()
-    store ptr a = do
-      let ptr' = castPtr ptr :: Ptr (Rep a p)
-      gStore ptr' $ from $ unWithPointable a
-    {-# INLINE store #-}
+instance Cea Word
 
-    deleteInner :: Ptr (WithPointable a) -> IO ()
-    deleteInner ptr = gDelete (castPtr ptr :: Ptr (Rep a p))
-    {-# INLINE deleteInner #-}
+instance Cea Int8
+
+instance Cea Int16
+
+instance Cea Int32
+
+instance Cea Int64
+
+instance Cea Int
+
+instance Cea Float
+
+instance Cea Double
+
+instance Cea Char
+
+instance Cea Bool
+
+instance Cea ()
+
+instance Cea (Ptr a)
+
+instance Cea IntPtr
+
+instance Cea WordPtr
+
+instance (Cea a, Cea b) => Cea (a, b)
+
+instance (Cea a, Cea b, Cea c) => Cea (a, b, c)
+
+instance (Cea a, Cea b, Cea c, Cea d) => Cea (a, b, c, d)
+
+instance (Cea a, Cea b, Cea c, Cea d, Cea e) => Cea (a, b, c, d, e)
 
 
 --------------------------------------------------------------------------------
@@ -922,22 +948,22 @@ instance (Val a, Val b) => Val ('Sum a b) where
 -- | Helper type for the @Pointable@ derivation for tuples.
 data P2 a b = P2 a b
   deriving (Generic)
-  deriving (Pointable) via (WithPointable (P2 a b))
+  deriving (Cea, Pointable)
 
 -- | Helper type for the @Pointable@ derivation for triples.
 data P3 a b c = P3 a b c
-  deriving (Generic)
-  deriving (Pointable) via (WithPointable (P3 a b c))
+  deriving stock Generic
+  deriving anyclass (Cea, Pointable)
 
 -- | Helper type for the @Pointable@ derivation for quadruples.
 data P4 a b c d = P4 a b c d
-  deriving (Generic)
-  deriving (Pointable) via (WithPointable (P4 a b c d))
+  deriving stock Generic
+  deriving anyclass (Cea, Pointable)
 
 -- | Helper type for the @Pointable@ derivation for quintuples.
 data P5 a b c d e = P5 a b c d e
-  deriving (Generic)
-  deriving (Pointable) via (WithPointable (P5 a b c d e))
+  deriving stock Generic
+  deriving anyclass (Cea, Pointable)
 
 type PtrSize = 8
 

@@ -60,17 +60,21 @@ main = do
   delete ptr
 ```
 
-To make custom data types an instance of `Pointable`, we can derive via the wrapper `WithPointable`:
+To make custom data types an instance of `Pointable`, we need to derive `Generic` and `Cea` before we can derive `Pointable`:
 
 ```Haskell
 data Foo = Foo Int Int
-  deriving (Generic, Show)
-  deriving (Pointable) via WithPointable Foo
+  deriving stock Generic
+  deriving anyclass (Cea, Pointable)
 
 data Bar = Bar Foo Foo
-  deriving (Generic, Show)
-  deriving (Pointable) via WithPointable Bar
+  deriving stock Generic
+  deriving anyclass (Cea, Pointable)
+```
 
+Here `Cea` is a dummy type class that enables the generic derivation of `Pointable`. In most of the cases, we just need to derive `Cea` and `Pointable` for our custom data types, and the compiler will do the rest for us. In the rare occasion where customised `Pointable` instances are needed, we **must not** derive `Cea` as it will automatically derive the generic implementation of `Accessible` for us, which may lead to errors when working with custom `Pointable`.  More details can be found in [this section](#accessor).
+
+```Haskell
 main :: IO ()
 main = do
   ptr <- make (Bar (Foo 0 0) (Foo 0 0))
@@ -142,6 +146,10 @@ main = do
 
 The type application `@n` specifies the `n`-th field. Note that the index starts from 0.
 
+The `access` function comes from the `Accessible` type class, which is automatically provided for `Cea` and `Pointable` instances. Therefore, if the `Pointable` instance is not derived but an explicit customised implementation, we **must not** derive `Cea` and **must** implement `Accessible` manually. In the vast majority of the cases, of course, the derived instances are sufficient and we don't need to worry about implementing `Accessible`.
+
+```Haskell
+
 `access` is often used directly with a `load` or a `store`. In this case, we can use the shorthand functions `loadAt` and `storeAt`, which reads and writes to the pointer returned by `access`:
 
 ```Haskell
@@ -177,8 +185,8 @@ If we are using a custom data type with selector names, we can also use the sele
 
 ```Haskell
 data Foo = Foo { foo1 :: Int, foo2 :: Int }
-  deriving (Generic, Show)
-  deriving (Pointable) via WithPointable Foo
+  deriving stock (Generic, Show)
+  deriving anyclass (Cea, Pointable)
 
 main :: IO ()
 main = do
@@ -270,8 +278,8 @@ Assuming we have the following data type `Student`:
 data Student = Student { name       :: String
                        , age        :: Int
                        , isDeanList :: Bool }
-  deriving (Generic, Show)
-  deriving (Pointable) via WithPointable Student
+  deriving stock (Generic, Show)
+  deriving anyclass (Cea, Pointable)
 ```
 TODO: Currently `String` is not `Pointable`, but I will handle lists as arrays later.
 
