@@ -18,6 +18,7 @@ test-suite cea-test
     type:             exitcode-stdio-1.0
     other-modules:
         Cea.Array,
+        Cea.Class.Internal,
         Cea.Pointer,
         Cea.Pointer.Accessor,
         Cea.Pointer.Internal,
@@ -60,6 +61,7 @@ executable cea
     main-is: Main.hs
     other-modules:
         Cea.Array,
+        Cea.Class.Internal,
         Cea.Pointer,
         Cea.Pointer.Accessor,
         Cea.Pointer.Internal,
@@ -102,6 +104,7 @@ library
         Cea.Pointer.Accessor,
         Cea.Pointer.Unsafe
     other-modules:
+        Cea.Class.Internal,
         Cea.Pointer.Internal,
         Cea.Utils.Symbol2Nat
     default-extensions:

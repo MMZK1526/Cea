@@ -5,4 +5,5 @@ module Cea.Pointer
   , Cea
   ) where
 
+import           Cea.Class.Internal
 import           Cea.Pointer.Internal
