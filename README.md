@@ -197,9 +197,6 @@ main = do
   delete ptr
 ```
 
-## List
-TODO
-
 ## Array
 
 There are two types of `Pointable` arrays, one has compile-time known size, and the other has runtime known size. To use arrays, import `Cea.Array`:

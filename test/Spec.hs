@@ -64,12 +64,20 @@ main = hspec do
       delete ptr
     it "Can make, load, and store IntPtr" $ primitiveAssertion @IntPtr
     it "Can make, load, and store WordPtr" $ primitiveAssertion @WordPtr
-    it "Can make, load, and store Ptr" $ do
+    it "Can make, load, and store Ptr" do
       ptr <- make (nullPtr :: Ptr ())
       val <- load ptr
       val `shouldBe` nullPtr
       store ptr (val `plusPtr` 114514)
       load ptr >>= (`shouldBe` (nullPtr `plusPtr` 114514))
+      delete ptr
+
+  describe "String load and store" do
+    it "Can make, load, and store String" do
+      ptr <- make "Yaju"
+      load ptr >>= (`shouldBe` "Yaju")
+      store ptr "Senpai"
+      load ptr >>= (`shouldBe` "Senpai")
       delete ptr
   
   describe "Native tuple load, store, and index selection" do

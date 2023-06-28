@@ -2,6 +2,9 @@
 --
 -- Lists are represented as a pointer to a contiguous block of memory which
 -- stores the length of the list followed by the elements.
+--
+-- Note that this is a temporary implementation. In the future, I'd like to
+-- implement list marshalling according to the structure, i.e. a linked list.
 module Cea.List.Internal where
 
 import           Cea.Array
